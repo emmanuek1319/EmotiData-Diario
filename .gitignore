@@ -1,0 +1,15 @@
+# Excepciones para C# / Visual Studio
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.suo
+*.dbmdl
+
+# Excepciones para Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env

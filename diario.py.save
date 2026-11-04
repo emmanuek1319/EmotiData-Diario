@@ -1,0 +1,128 @@
+import json
+import os
+import re
+from datetime import datetime, timedelta
+from collections import Counter
+from textblob import TextBlob
+from googletrans import Translator
+
+# Configuración de archivos
+ARCHIVO_DATOS = "datos_diario.json"
+
+def calcular_racha():
+    if not os.path.exists(ARCHIVO_DATOS):
+        return 0
+    with open(ARCHIVO_DATOS, "r", encoding="utf-8") as f:
+        try:
+            historial = json.load(f)
+        except:
+            return 0
+
+    fechas = sorted(list(set([datetime.strptime(e['fecha'], "%Y-%m-%d %H:%M:%S").date() for e in historial])), reverse=True)
+    if not fechas: return 0
+
+    racha = 0
+    fecha_esperada = datetime.now().date()
+    if fechas[0] < fecha_esperada - timedelta(days=1): return 0
+
+    for fecha in fechas:
+        if fecha == fecha_esperada or fecha == fecha_esperada - timedelta(days=1):
+            racha += 1
+            fecha_esperada = fecha - timedelta(days=1)
+        else:
+            break
+    return racha
+
+def obtener_rango(racha):
+    if racha == 0: return "Principiante 🌱"
+    if racha < 3: return "Observador Novato 🔍"
+    if racha < 7: return "Aprendiz de Goleman 🧠"
+    return "Maestro de la Logoterapia 💎"
+
+def mostrar_dashboard():
+    if not os.path.exists(ARCHIVO_DATOS):
+        print("\n⚠️ No hay datos suficientes. ¡Escribe algo primero!")
+        return
+
+    with open(ARCHIVO_DATOS, "r", encoding="utf-8") as f:
+        try:
+            historial = json.load(f)
+        except:
+            print("⚠️ Error al leer los datos.")
+            return
+
+    print("\n" + "📊 " + "="*40)
+    print("      DASHBOARD DE BIENESTAR EMOCIONAL")
+    print("="*43)
+    
+    total = len(historial)
+    promedio = sum(e['puntuacion'] for e in historial) / total
+    
+    # Análisis de "Puntos Ciegos" (Palabras recurrentes)
+    stop_words = ["el", "la", "que", "y", "en", "un", "una", "de", "mi", "hoy", "me", "con", "estoy", "por"]
+    palabras = []
+    for e in historial:
+        encontradas = re.findall(r'\w+', e['texto_original'].lower())
+        palabras.extend([p for p in encontradas if p not in stop_words and len(p) > 2])
+    
+    comunes = Counter(palabras).most_common(3)
+
+    print(f"📈 Total de entradas: {total}")
+    print(f"🌡️ Felicidad Promedio: {round(promedio, 2)}")
+    print(f"🎭 Estado General: {'Positivo ✨' if promedio > 0.1 else 'Neutral 😐' if promedio > -0.1 else 'Negativo 🔥'}")
+    print("\n🔍 Temas que más mencionas (Puntos Ciegos):")
+    for pal, cant in comunes:
+        print(f"   - '{pal}': {cant} veces")
+    print("="*43 + "\n")
+
+def guardar_en_historial(datos):
+    historial = []
+    if os.path.exists(ARCHIVO_DATOS):
+        with open(ARCHIVO_DATOS, "r", encoding="utf-8") as f:
+            try: historial = json.load(f)
+            except: pass
+    historial.append(datos)
+    with open(ARCHIVO_DATOS, "w", encoding="utf-8") as f:
+        json.dump(historial, f, indent=4, ensure_ascii=False)
+
+def iniciar_diario():
+    translator = Translator()
+    print("\n" + "📔 " + "="*40)
+    print("     BIENVENIDO A TU DIARIO INTELIGENTE")
+    print("="*43)
+    
+    racha = calcular_racha()
+    print(f"🔥 Racha: {racha} días | Rango: {obtener_rango(racha)}")
+    print("\nComandos: 'dashboard' para ver gráficas | 'salir' para cerrar")
+
+    while True:
+        entrada = input("\n¿Cómo te sientes? > ")
+        
+        if entrada.lower() == 'salir': break
+        if entrada.lower() == 'dashboard':
+            mostrar_dashboard()
+            continue
+
+        try:
+            # IA y Traducción
+            traduccion = translator.translate(entrada, src='es', dest='en')
+            score = TextBlob(traduccion.text).sentiment.polarity
+            
+            animo = "Positivo" if score > 0.1 else "Negativo" if score < -0.1 else "Neutral"
+            
+            # Persistencia
+            nueva_entrada = {
+                "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "texto_original": entrada,
+                "puntuacion": round(score, 2),
+                "estado_animo": animo
+            }
+            guardar_en_historial(nueva_entrada)
+            print(f"✅ Analizado como {animo}. Datos guardados.")
+            
+        except Exception as e:
+            print(f"❌ Error de conexión: {e}")
+
+if __name__ == "__main__":
+    iniciar_diario()
+

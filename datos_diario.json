@@ -1,0 +1,344 @@
+[
+    {
+        "fecha": "2026-03-09 22:18:01",
+        "texto_original": "me encuentro sorprendido y asustado",
+        "puntuacion": 0.1,
+        "estado_animo": "Neutral"
+    },
+    {
+        "fecha": "2026-03-10 22:18:14",
+        "texto_original": "estoy feliz",
+        "puntuacion": 0.8,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-03-11 22:27:49",
+        "texto_original": "genial ",
+        "puntuacion": 0.9,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-03-12 22:27:57",
+        "texto_original": "estoy triste",
+        "puntuacion": -0.5,
+        "estado_animo": "Negativo"
+    },
+    {
+        "fecha": "2026-03-13 22:42:54",
+        "texto_original": "geniallllllllllllll",
+        "puntuacion": 0.0,
+        "estado_animo": "Neutral"
+    },
+    {
+        "fecha": "2026-03-14 22:45:21",
+        "texto_original": "muy feliz",
+        "puntuacion": 1.0,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-03-15 22:52:22",
+        "texto_original": "genial ",
+        "puntuacion": 0.9,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-03-16 22:52:28",
+        "texto_original": "mal",
+        "puntuacion": -1.0,
+        "estado_animo": "Negativo"
+    },
+    {
+        "fecha": "2026-03-17 22:52:34",
+        "texto_original": "enojado",
+        "puntuacion": -0.5,
+        "estado_animo": "Negativo"
+    },
+    {
+        "fecha": "2026-03-18 22:53:00",
+        "texto_original": "dashboart",
+        "puntuacion": 0.0,
+        "estado_animo": "Neutral"
+    },
+    {
+        "fecha": "2026-03-19 22:58:14",
+        "texto_original": "muy muy tristre",
+        "puntuacion": -0.65,
+        "estado_animo": "Negativo"
+    },
+    {
+        "fecha": "2026-03-20 23:04:56",
+        "texto_original": "feliz",
+        "puntuacion": 0.8,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-03-20 23:06:27",
+        "texto_original": "mu bien \u001b[1;5D\u001b",
+        "puntuacion": 0.91,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-03-20 16:38:57",
+        "texto_original": "Genial ",
+        "puntuacion": 0.9,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-03-20 16:45:52",
+        "texto_original": "triste",
+        "puntuacion": -0.5,
+        "estado_animo": "Negativo"
+    },
+    {
+        "fecha": "2026-03-20 16:49:44",
+        "texto_original": "deprimido",
+        "puntuacion": 0.0,
+        "estado_animo": "Neutral"
+    },
+    {
+        "fecha": "2026-03-20 16:53:57",
+        "texto_original": "chido",
+        "puntuacion": 0.35,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-03-20 10:46:35",
+        "texto_original": "Muy very good ",
+        "puntuacion": 0.91,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-03-20 10:47:14",
+        "texto_original": "de la chingada ",
+        "puntuacion": -0.4,
+        "estado_animo": "Negativo"
+    },
+    {
+        "fecha": "2026-03-20 10:48:42",
+        "texto_original": "hoy me siento de la chingada porque me cai de la moto, unas chavas me vieron y me chivie y despues el papa de una compañera me reconoce como el que se callo",
+        "puntuacion": -0.1,
+        "estado_animo": "Neutral"
+    },
+    {
+        "fecha": "2026-03-20 11:12:29",
+        "texto_original": "regular",
+        "puntuacion": 0.0,
+        "estado_animo": "Neutral"
+    },
+    {
+        "fecha": "2026-03-21 14:33:50",
+        "texto_original": "muy genia",
+        "puntuacion": 0.2,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-03-22 14:33:57",
+        "texto_original": "algo triste",
+        "puntuacion": -0.5,
+        "estado_animo": "Negativo"
+    },
+    {
+        "fecha": "2026-03-23 14:34:02",
+        "texto_original": "desanimado ",
+        "puntuacion": 0.0,
+        "estado_animo": "Neutral"
+    },
+    {
+        "fecha": "2026-03-24 14:34:09",
+        "texto_original": "sorpendido ",
+        "puntuacion": 0.1,
+        "estado_animo": "Neutral"
+    },
+    {
+        "fecha": "2026-03-25 14:34:12",
+        "texto_original": "mal ",
+        "puntuacion": -1.0,
+        "estado_animo": "Negativo"
+    },
+    {
+        "fecha": "2026-03-26 14:34:14",
+        "texto_original": "muy mal ",
+        "puntuacion": -0.91,
+        "estado_animo": "Negativo"
+    },
+    {
+        "fecha": "2026-03-27 14:35:47",
+        "texto_original": "1234",
+        "puntuacion": 0.0,
+        "estado_animo": "Neutral"
+    },
+    {
+        "fecha": "2026-03-28 14:35:53",
+        "texto_original": "bien ",
+        "puntuacion": 0.7,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-03-29 14:35:55",
+        "texto_original": "genial ",
+        "puntuacion": 0.9,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-03-30 14:35:59",
+        "texto_original": "mal ",
+        "puntuacion": -1.0,
+        "estado_animo": "Negativo"
+    },
+    {
+        "fecha": "2026-03-30 14:36:03",
+        "texto_original": "muy feliz ",
+        "puntuacion": 1.0,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-03-31 11:23:04",
+        "texto_original": "genial ",
+        "puntuacion": 0.9,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-04-01 11:24:16",
+        "texto_original": "positivo ",
+        "puntuacion": 0.23,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-04-02 11:24:33",
+        "texto_original": "tiste ",
+        "puntuacion": 0.0,
+        "estado_animo": "Neutral"
+    },
+    {
+        "fecha": "2026-04-03 11:24:39",
+        "texto_original": "mal ",
+        "puntuacion": -1.0,
+        "estado_animo": "Negativo"
+    },
+    {
+        "fecha": "2026-04-04 11:27:58",
+        "texto_original": "de puta madreeeeeeeeeeee",
+        "puntuacion": 0.0,
+        "estado_animo": "Neutral"
+    },
+    {
+        "fecha": "2026-04-05 10:51:16",
+        "texto_original": "EXITADO",
+        "puntuacion": 0.38,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-04-06 10:58:10",
+        "texto_original": "ANSIOSO",
+        "puntuacion": -0.25,
+        "estado_animo": "Negativo"
+    },
+    {
+        "fecha": "2026-04-07 10:58:18",
+        "texto_original": "PENSATIO",
+        "puntuacion": 0.0,
+        "estado_animo": "Neutral"
+    },
+    {
+        "fecha": "2026-04-08 10:58:27",
+        "texto_original": "PREOCUPADO",
+        "puntuacion": 0.0,
+        "estado_animo": "Neutral"
+    },
+    {
+        "fecha": "2026-04-09 10:58:51",
+        "texto_original": "EXALTADO ",
+        "puntuacion": 0.0,
+        "estado_animo": "Neutral"
+    },
+    {
+        "fecha": "2026-04-10 11:00:20",
+        "texto_original": "ESTRESADO",
+        "puntuacion": 0.0,
+        "estado_animo": "Neutral"
+    },
+    {
+        "fecha": "2026-04-11 11:04:43",
+        "texto_original": "INQUIETO",
+        "puntuacion": 0.0,
+        "estado_animo": "Neutral"
+    },
+    {
+        "fecha": "2026-04-1 11:04:55",
+        "texto_original": "ASUSTADO",
+        "puntuacion": 0.0,
+        "estado_animo": "Neutral"
+    },
+    {
+        "fecha": "2026-04-13 11:05:25",
+        "texto_original": "\u001b[D\u001b[B\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[1;5C\u001b[",
+        "puntuacion": 0.0,
+        "estado_animo": "Neutral"
+    },
+    {
+        "fecha": "2026-04-13 11:58:45",
+        "texto_original": "fff",
+        "puntuacion": 0.0,
+        "estado_animo": "Neutral"
+    },
+    {
+        "fecha": "2026-04-14 16:51:59",
+        "texto_original": "MAMA",
+        "puntuacion": 0.0,
+        "estado_animo": "Neutral"
+    },
+    {
+        "fecha": "2026-04-14 16:52:03",
+        "texto_original": "BIEN ",
+        "puntuacion": 0.7,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-04-14 16:52:06",
+        "texto_original": "malo ",
+        "puntuacion": -0.7,
+        "estado_animo": "Negativo"
+    },
+    {
+        "fecha": "2026-04-14 16:52:10",
+        "texto_original": "feliz ",
+        "puntuacion": 0.8,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-04-14 20:56:02",
+        "texto_original": "muy feliz",
+        "puntuacion": 1.0,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-04-14 21:00:48",
+        "texto_original": "muy triste ",
+        "puntuacion": -0.65,
+        "estado_animo": "Negativo"
+    },
+    {
+        "fecha": "2026-04-15 17:30:57",
+        "texto_original": "MUY TRISTE ",
+        "puntuacion": -0.65,
+        "estado_animo": "Negativo"
+    },
+    {
+        "fecha": "2026-04-16 10:59:44",
+        "texto_original": "Muy nervioso ",
+        "puntuacion": 0.2,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-04-16 11:56:05",
+        "texto_original": "MUY BIEN ",
+        "puntuacion": 0.91,
+        "estado_animo": "Positivo"
+    },
+    {
+        "fecha": "2026-04-17 15:25:20",
+        "texto_original": "CON ENTUSIASMO ",
+        "puntuacion": 0.0,
+        "estado_animo": "Neutral"
+    }
+]
