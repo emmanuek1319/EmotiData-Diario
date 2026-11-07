@@ -3,11 +3,11 @@ from flask_cors import CORS
 from pymongo import MongoClient, DESCENDING
 from datetime import datetime
 import random
-
-app = Flask(__name__)
-CORS(app) 
 import os
 from dotenv import load_dotenv
+
+app = Flask(__name__)
+CORS(app)
 
 load_dotenv()  # Carga las variables del .env cuando estás en local
 
@@ -29,7 +29,7 @@ except Exception as e:
     print(f"❌ Error al conectar a MongoDB: {e}")
 
 # -------------------------------------------------------------------
-# 1. RESUMEN DEL MENÚ PRINCIPAL (¡Corregido para HomeFrom.cs!)
+# 1. RESUMEN DEL MENÚ PRINCIPAL
 # -------------------------------------------------------------------
 @app.route('/api/usuario/resumen', defaults={'usuario_id': 'USR_EMMANUEL_01'}, methods=['GET'], strict_slashes=False)
 @app.route('/api/usuario/resumen/<usuario_id>', methods=['GET'], strict_slashes=False)
@@ -58,7 +58,7 @@ def obtener_resumen_usuario(usuario_id):
             "ultima_emocion": ultima_emocion,
             "fecha": ultima_fecha,
             "ultima_fecha": ultima_fecha,
-            "fecha_ultima": ultima_fecha  # <--- ¡AQUÍ ESTÁ LA MAGIA! Esto evita el crash en C#
+            "fecha_ultima": ultima_fecha  # <--- Evita el crash en C#
         }), 200
     except Exception as e:
         print(f"❌ Error en resumen: {e}")
@@ -307,7 +307,7 @@ def obtener_estudiantes():
         return jsonify({"error": str(e)}), 500
 
 # -------------------------------------------------------------------
-# 8. REGISTRO DE NUEVOS ESTUDIANTES (Mantiene la solución del 404)
+# 8. REGISTRO DE NUEVOS ESTUDIANTES 
 # -------------------------------------------------------------------
 @app.route('/api/psicologa/registrar_estudiante', methods=['POST'], strict_slashes=False)
 @app.route('/api/usuarios/registrar', methods=['POST'], strict_slashes=False)
@@ -329,4 +329,5 @@ def registrar_usuario():
 
 if __name__ == '__main__':
     print("🚀 Servidor Flask (API EmotiData) 100% BLINDADO Y SINCRONIZADO CON C#...")
+    # Solo se usa en desarrollo local. Render usa Gunicorn con 0.0.0.0
     app.run(host='127.0.0.1', port=5000, debug=True)
