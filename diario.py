@@ -6,12 +6,25 @@ import random
 
 app = Flask(__name__)
 CORS(app) 
+import os
+from dotenv import load_dotenv
 
-MONGO_URI = "mongodb://localhost:27017/"
+load_dotenv()  # Carga las variables del .env cuando estás en local
+
+# Busca la variable de entorno; si no existe, usa la ruta local
+MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
+
 try:
-    client = MongoClient(MONGO_URI)
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
     db = client["diario_inteligente"]
-    print("✅ Conectado a MongoDB local exitosamente.")
+    
+    # Hacemos un ping real para confirmar la conexión
+    client.admin.command("ping")
+    
+    # Un mensaje para saber a dónde nos conectamos
+    tipo_conexion = "Atlas (Nube)" if "mongodb+srv" in MONGO_URI else "Local"
+    print(f"✅ Conectado a MongoDB: {tipo_conexion}")
+    
 except Exception as e:
     print(f"❌ Error al conectar a MongoDB: {e}")
 
