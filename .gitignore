@@ -12,4 +12,8 @@ __pycache__/
 *$py.class
 venv/
 env/
-.env
+.env.venv/
+nltk_data/
+VirtualBox VMs/
+datos_diario.json
+*.save

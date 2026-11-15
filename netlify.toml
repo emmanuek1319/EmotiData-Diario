@@ -1,0 +1,11 @@
+# Netlify publica SOLO la carpeta web/ (el resto del repositorio, como diario.py, no se expone)
+[build]
+  publish = "web"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    X-Frame-Options = "DENY"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://emotidata-backend.onrender.com; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
