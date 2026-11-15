@@ -17,3 +17,8 @@ nltk_data/
 VirtualBox VMs/
 datos_diario.json
 *.save
+.venv/
+nltk_data/
+VirtualBox VMs/
+datos_diario.json
+*.save
