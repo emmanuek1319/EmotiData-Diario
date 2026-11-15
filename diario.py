@@ -150,7 +150,11 @@ def health():
     return jsonify({"estado": "ok", "servicio": "EmotiData API", "emociones_soportadas": 27}), 200
 
 
-@app.route('/api/usuario/resumen', defaults={'usuario_id': 'USR_EMMANUEL_01'}, methods=['GET'], strict_slashes=False)
+@app.route('/api/usuario/resumen', methods=['GET'], strict_slashes=False)
+def obtener_resumen_usuario_default():
+    return obtener_resumen_usuario('USR_EMMANUEL_01')
+
+
 @app.route('/api/usuario/resumen/<usuario_id>', methods=['GET'], strict_slashes=False)
 @app.route('/api/usuarios/perfil/<usuario_id>', methods=['GET'], strict_slashes=False)
 def obtener_resumen_usuario(usuario_id):
@@ -179,7 +183,11 @@ def obtener_resumen_usuario(usuario_id):
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/api/usuario/logros', defaults={'usuario_id': 'USR_EMMANUEL_01'}, methods=['GET'], strict_slashes=False)
+@app.route('/api/usuario/logros', methods=['GET'], strict_slashes=False)
+def obtener_logros_usuario_default():
+    return obtener_logros_usuario('USR_EMMANUEL_01')
+
+
 @app.route('/api/usuario/logros/<usuario_id>', methods=['GET'], strict_slashes=False)
 def obtener_logros_usuario(usuario_id):
     try:
@@ -231,7 +239,11 @@ def obtener_frases_relax():
         return jsonify({"frases": [{"texto": "Respira y mantén la calma.", "autor": "Buda"}]}), 200
 
 
-@app.route('/api/diario/reporte_psicologica', defaults={'usuario_id': 'USR_EMMANUEL_01'}, methods=['GET'], strict_slashes=False)
+@app.route('/api/diario/reporte_psicologica', methods=['GET'], strict_slashes=False)
+def obtener_reporte_psicologica_default():
+    return obtener_reporte_psicologica('USR_EMMANUEL_01')
+
+
 @app.route('/api/diario/reporte_psicologica/<usuario_id>', methods=['GET'], strict_slashes=False)
 @app.route('/api/psicologa/reporte/<usuario_id>', methods=['GET'], strict_slashes=False)
 def obtener_reporte_psicologica(usuario_id):
@@ -304,7 +316,11 @@ def compartir_entrada_psicologa(log_id):
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/api/diario/historial', defaults={'usuario_id': 'USR_EMMANUEL_01'}, methods=['GET'], strict_slashes=False)
+@app.route('/api/diario/historial', methods=['GET'], strict_slashes=False)
+def obtener_historial_default():
+    return obtener_historial('USR_EMMANUEL_01')
+
+
 @app.route('/api/diario/historial/<usuario_id>', methods=['GET'], strict_slashes=False)
 def obtener_historial(usuario_id):
     try:
@@ -698,9 +714,9 @@ def eliminar_meta_habito(meta_id):
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/api/usuarios/configuracion', defaults={'id_usuario': 'USR_EMMANUEL_01'}, methods=['GET'], strict_slashes=False)
+@app.route('/api/usuarios/configuracion', methods=['GET'], strict_slashes=False)
 @app.route('/api/usuarios/configuracion/<id_usuario>', methods=['GET'], strict_slashes=False)
-def obtener_configuracion_tema(id_usuario):
+def obtener_configuracion_tema(id_usuario='USR_EMMANUEL_01'):
     return jsonify({"tema": "OscuroRojo", "tema_color": "Verde Menta", "modo_oscuro": True}), 200
 
 
