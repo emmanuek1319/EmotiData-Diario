@@ -21,16 +21,39 @@ CORS(app, resources={r"/api/*": {"origins": CORS_ORIGINS}})
 MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
 TZ_MX = timezone(timedelta(hours=-6))
 
+
 def ahora_mx():
     return datetime.now(TZ_MX)
+
 
 def a_entero(valor, defecto):
     try:
         if valor is None or str(valor).strip() == "":
             return defecto
-        return int(valor)
+        return int(float(valor))
     except (ValueError, TypeError):
         return defecto
+
+
+def a_flotante(valor, defecto=0.0):
+    try:
+        if valor is None or str(valor).strip() == "":
+            return defecto
+        return float(valor)
+    except (ValueError, TypeError):
+        return defecto
+
+
+def a_lista(valor):
+    return valor if isinstance(valor, list) else []
+
+
+def obtener_detalles(doc):
+    if not isinstance(doc, dict):
+        return {}
+    raw = doc.get("detalles_estudiante")
+    return raw if isinstance(raw, dict) else {}
+
 
 try:
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
@@ -83,12 +106,14 @@ RETOS_RESPALDO = [
     {"emocion_trigger": "Neutral", "tipo": "construir", "titulo": "Estudio sin distracciones", "micro_accion": "25 minutos de estudio o lectura sin celular", "duracion_dias": 20}
 ]
 
+
 def analizar_texto_27(texto):
     t = texto.lower()
     for emocion, punt, kws, resp in EMOCIONES_27:
         if any(k in t for k in kws):
             return emocion, punt, resp
     return "Neutral", 0.0, EMOCIONES_27[-1][3]
+
 
 def obtener_reto_sugerido(emocion):
     try:
@@ -131,7 +156,7 @@ def health():
 def obtener_resumen_usuario(usuario_id):
     try:
         usuario = db.usuarios.find_one({"_id": usuario_id}) or db.usuarios.find_one({"_id": "USR_EMMANUEL_01"})
-        detalles = (usuario.get("detalles_estudiante") or {}) if isinstance(usuario, dict) else {}
+        detalles = obtener_detalles(usuario)
 
         ultimo_log = db.diario_logs.find_one({"usuario_id": usuario_id}, sort=[("fecha", DESCENDING)])
         total_usuario = db.diario_logs.count_documents({"usuario_id": usuario_id})
@@ -159,7 +184,7 @@ def obtener_resumen_usuario(usuario_id):
 def obtener_logros_usuario(usuario_id):
     try:
         usuario = db.usuarios.find_one({"_id": usuario_id}) or db.usuarios.find_one({"_id": "USR_EMMANUEL_01"})
-        detalles = (usuario.get("detalles_estudiante") or {}) if isinstance(usuario, dict) else {}
+        detalles = obtener_detalles(usuario)
         total_logs = db.diario_logs.count_documents({"usuario_id": usuario_id})
 
         racha = a_entero(detalles.get("racha_dias"), total_logs)
@@ -221,7 +246,7 @@ def obtener_reporte_psicologica(usuario_id):
             for l in logs_recientes:
                 em = str(l.get("emocion", "Neutral"))
                 conteo_emo[em] = conteo_emo.get(em, 0) + 1
-                p = float(l.get("puntuacion", 0.0))
+                p = a_flotante(l.get("puntuacion"), 0.0)
                 suma_punt += p
                 if p < -0.5:
                     negativos_seguidos += 1
@@ -243,7 +268,7 @@ def obtener_reporte_psicologica(usuario_id):
             db["notas_psicológicas"].find_one({"$or": [{"estudiante_id": usuario_id}, {"usuario_id": usuario_id}]}, sort=[("fecha", DESCENDING)])
             or db["notas_psicologica"].find_one({"$or": [{"estudiante_id": usuario_id}, {"usuario_id": usuario_id}]}, sort=[("fecha", DESCENDING)])
         )
-        nota_clinica = (nota.get("notas") or nota.get("observaciones")) if nota else ""
+        nota_clinica = (nota.get("notas") or nota.get("observaciones")) if isinstance(nota, dict) else ""
 
         return jsonify({
             "observaciones": nota_clinica if nota_clinica else obs,
@@ -295,7 +320,7 @@ def obtener_historial(usuario_id):
                 "pensamiento": str(log.get("texto_original", "")),
                 "texto": str(log.get("texto_original", "")),
                 "respuesta_enviada": str(log.get("respuesta_enviada", "Sigue adelante")),
-                "puntuacion": float(log.get("puntuacion", 0.0)),
+                "puntuacion": a_flotante(log.get("puntuacion"), 0.0),
                 "compartido_psicologa": bool(log.get("compartido_psicologa", False))
             })
 
@@ -492,11 +517,11 @@ def obtener_metas_habitos(usuario_id):
         punt_por_dia = {}
         for l in logs_mes:
             dia_f = str(l.get("fecha", ""))[:10]
-            punt_por_dia.setdefault(dia_f, []).append(float(l.get("puntuacion", 0.0)))
+            punt_por_dia.setdefault(dia_f, []).append(a_flotante(l.get("puntuacion"), 0.0))
 
         lista_metas = []
         for m in metas_db:
-            dias = sorted(list(set(m.get("dias_cumplidos", []))))
+            dias = sorted(list(set(a_lista(m.get("dias_cumplidos")))))
             meta_dias = a_entero(m.get("meta_dias"), 20)
             porcentaje = min(100, round((len(dias) / max(1, meta_dias)) * 100))
 
@@ -538,9 +563,9 @@ def obtener_metas_habitos(usuario_id):
             })
 
         todas_metas = list(db.metas_habitos.find({"usuario_id": usuario_id, "estado": {"$ne": "eliminada"}}))
-        total_victorias = sum(len(x.get("dias_cumplidos", [])) for x in todas_metas)
-        alguna_7 = any(len(x.get("dias_cumplidos", [])) >= 7 for x in todas_metas)
-        alguna_cumplida = any(len(x.get("dias_cumplidos", [])) >= a_entero(x.get("meta_dias"), 20) for x in todas_metas)
+        total_victorias = sum(len(a_lista(x.get("dias_cumplidos"))) for x in todas_metas)
+        alguna_7 = any(len(a_lista(x.get("dias_cumplidos"))) >= 7 for x in todas_metas)
+        alguna_cumplida = any(len(a_lista(x.get("dias_cumplidos"))) >= a_entero(x.get("meta_dias"), 20) for x in todas_metas)
         mes_oro = len(lista_metas) >= 3 and all(x["porcentaje"] >= 100 for x in lista_metas)
 
         previas_count = db.metas_habitos.count_documents({
@@ -651,7 +676,7 @@ def checkin_meta_habito():
         if not meta:
             return jsonify({"error": "Meta no encontrada."}), 404
 
-        dias = meta.get("dias_cumplidos", [])
+        dias = a_lista(meta.get("dias_cumplidos"))
         if fecha_dia in dias:
             db.metas_habitos.update_one({"_id": ObjectId(meta_id)}, {"$pull": {"dias_cumplidos": fecha_dia}})
             hecho = False
@@ -686,9 +711,9 @@ def obtener_estudiantes():
         lista_estudiantes = []
         for est in estudiantes_db:
             id_est = str(est.get("_id", "")).strip()
-            detalles = (est.get("detalles_estudiante") or {}) if isinstance(est, dict) else {}
+            detalles = obtener_detalles(est)
             ultimo_log = db.diario_logs.find_one({"usuario_id": id_est}, sort=[("fecha", DESCENDING)])
-            puntuacion = float(ultimo_log.get("puntuacion", 0)) if ultimo_log else 0.0
+            puntuacion = a_flotante(ultimo_log.get("puntuacion"), 0.0) if ultimo_log else 0.0
             total_logs = db.diario_logs.count_documents({"usuario_id": id_est})
             metas_activas = db.metas_habitos.count_documents({"usuario_id": id_est, "estado": "activo"})
 
@@ -718,7 +743,7 @@ def obtener_estudio_mensual_estudiante(usuario_id):
     mes_solicitado = request.args.get("mes")
     try:
         est = db.usuarios.find_one({"_id": usuario_id})
-        detalles = (est.get("detalles_estudiante") or {}) if isinstance(est, dict) else {}
+        detalles = obtener_detalles(est)
 
         todos_logs = list(db.diario_logs.find({"usuario_id": usuario_id}).sort("fecha", DESCENDING))
         meses_set = sorted(list({str(l.get("fecha", ""))[:7] for l in todos_logs if len(str(l.get("fecha", ""))) >= 7}), reverse=True)
@@ -737,7 +762,7 @@ def obtener_estudio_mensual_estudiante(usuario_id):
         for l in logs_mes:
             em = str(l.get("emocion", "Neutral"))
             conteo[em] = conteo.get(em, 0) + 1
-            p = float(l.get("puntuacion", 0.0))
+            p = a_flotante(l.get("puntuacion"), 0.0)
             suma_punt += p
             if p < -0.5:
                 negativos += 1
@@ -783,7 +808,7 @@ def obtener_estudio_mensual_estudiante(usuario_id):
         metas_db = list(db.metas_habitos.find({"usuario_id": usuario_id, "mes": mes, "estado": "activo"}))
         habitos_lista = []
         for m in metas_db:
-            dias_c = m.get("dias_cumplidos", [])
+            dias_c = a_lista(m.get("dias_cumplidos"))
             meta_d = a_entero(m.get("meta_dias"), 20)
             habitos_lista.append({
                 "titulo": m.get("titulo", ""),
@@ -807,7 +832,7 @@ def obtener_estudio_mensual_estudiante(usuario_id):
                 "id": str(l["_id"]),
                 "fecha": str(l.get("fecha", "")),
                 "emocion": str(l.get("emocion", "")),
-                "puntuacion": float(l.get("puntuacion", 0.0)),
+                "puntuacion": a_flotante(l.get("puntuacion"), 0.0),
                 "respuesta_enviada": str(l.get("respuesta_enviada", "")),
                 "reto_sugerido": l.get("reto_sugerido") or obtener_reto_sugerido(str(l.get("emocion", "Neutral"))),
                 "precision_psicologa": prec,
@@ -835,8 +860,8 @@ def obtener_estudio_mensual_estudiante(usuario_id):
         return jsonify({
             "estudiante": {
                 "id": usuario_id,
-                "nombre": str(est.get("nombre_completo", usuario_id)).strip() if est else usuario_id,
-                "correo": str(est.get("correo", "")).strip() if est else "",
+                "nombre": str(est.get("nombre_completo", usuario_id)).strip() if isinstance(est, dict) else usuario_id,
+                "correo": str(est.get("correo", "")).strip() if isinstance(est, dict) else "",
                 "matricula": str(detalles.get("matricula", "")).strip(),
                 "carrera": str(detalles.get("carrera", "")).strip()
             },
