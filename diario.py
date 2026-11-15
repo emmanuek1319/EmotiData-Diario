@@ -3,7 +3,7 @@ from flask_cors import CORS
 from pymongo import MongoClient, DESCENDING
 from bson.objectid import ObjectId
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import calendar
 import secrets
 import random
@@ -19,6 +19,10 @@ CORS_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",")
 CORS(app, resources={r"/api/*": {"origins": CORS_ORIGINS}})
 
 MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
+TZ_MX = timezone(timedelta(hours=-6))
+
+def ahora_mx():
+    return datetime.now(TZ_MX)
 
 try:
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
@@ -30,13 +34,53 @@ except Exception as e:
     print(f"❌ Error al conectar a MongoDB: {e}")
     raise
 
-RETOS_RESPALDO = [
-    {"emocion_trigger": "Tristeza", "tipo": "construir", "titulo": "Un buen momento al día", "micro_accion": "Escribir al final del día una cosa pequeña que salió bien", "duracion_dias": 14},
-    {"emocion_trigger": "Miedo / Ansiedad", "tipo": "construir", "titulo": "Higiene del sueño", "micro_accion": "Apagar pantallas 30 minutos antes de dormir", "duracion_dias": 21},
-    {"emocion_trigger": "Enojo", "tipo": "soltar", "titulo": "Pausa antes de reaccionar", "micro_accion": "Respirar 3 veces antes de responder cuando sienta coraje", "duracion_dias": 14},
-    {"emocion_trigger": "Neutral", "tipo": "construir", "titulo": "Estudio sin distracciones", "micro_accion": "25 minutos de estudio sin celular", "duracion_dias": 20},
-    {"emocion_trigger": "Alegría", "tipo": "mejorar", "titulo": "Consolidar mi ritmo", "micro_accion": "Avanzar 20 minutos en mi proyecto principal", "duracion_dias": 20}
+# Catálogo de las 27 emociones: (emocion, puntuacion, keywords, respuesta_empatica)
+EMOCIONES_27 = [
+    ("Ansiedad", -0.8, ["ansiedad", "ansioso", "ansiosa", "nervioso", "nerviosa", "panico", "pánico", "agobiado", "estres", "estrés", "preocupado", "inquieto", "taquicardia"], "Respira despacio: inhala 4 segundos y exhala 6. No tienes que resolver todo hoy mismo."),
+    ("Miedo", -0.8, ["miedo", "asustado", "asustada", "temor", "terror", "inseguro", "amenaza", "sustos"], "Sentir miedo es una señal de alerta natural. Da un paso pequeño a la vez y apóyate en alguien de confianza."),
+    ("Tristeza", -0.7, ["triste", "tristeza", "deprimido", "llorar", "llorando", "apagado", "desanimado", "vacio", "vacío", "dolor", "pena"], "Es válido sentirte así. Date permiso de ir más despacio hoy y recuerda que no estás solo."),
+    ("Enojo", -0.7, ["enojado", "enojada", "enojo", "coraje", "rabia", "molesto", "frustrado", "harto", "furioso", "ira"], "Tu enojo señala que algo cruzó un límite importante. Haz una pausa antes de responder o decidir."),
+    ("Impacto", -0.7, ["horror", "impactado", "shock", "espantado", "aterrado", "terrible", "horrible"], "Cuando algo nos sacude fuerte, volver al cuerpo ayuda: toma agua y enfócate en tu respiración."),
+    ("Rechazo", -0.6, ["asco", "repulsion", "repulsión", "rechazo", "desagrado", "hartazgo"], "Reconocer lo que te genera rechazo también te ayuda a proteger tus límites y tu bienestar."),
+    ("Incomodidad", -0.5, ["incomodo", "incómodo", "verguenza", "vergüenza", "culpa", "culpable", "pena ajena", "torpe"], "Todos cometemos errores o pasamos momentos incómodos; trátate con la misma paciencia que a un amigo."),
+    ("Envidia", -0.4, ["envidia", "celos", "comparando", "compararme", "quisiera tener"], "Compararte desgasta tu energía. Usa esa señal para identificar qué meta personal te gustaría construir."),
+    ("Aburrimiento", -0.3, ["aburrido", "aburrida", "aburrimiento", "monotonia", "monotonía", "sin nada que hacer", "tedio"], "El aburrimiento es una invitación a cambiar de actividad por 15 minutos y probar algo distinto."),
+    ("Confusión", -0.3, ["confundido", "confundida", "confusion", "confusión", "perdido", "no se que hacer", "no sé qué hacer", "duda"], "No tener todas las respuestas hoy es normal; escribe las opciones en papel para aclarar tu mente."),
+    ("Nostalgia", -0.2, ["nostalgia", "nostalgico", "extrano", "extraño", "recuerdos", "antes", "ayer"], "Extrañar etapas o personas habla de lo valioso que fue para ti. Agradece ese recuerdo y vuelve al presente."),
+    ("Empatía", -0.2, ["empatia", "empatía", "compasion", "compasión", "me duele ver", "solidaridad"], "Tu capacidad de conectar con otros es valiosa; cuida también tus propios límites emocionales."),
+    ("Anhelo", 0.1, ["anhelo", "deseo", "quisiera", "ojala", "ojalá", "sueno con", "sueño con"], "Tener anhelos claros te da dirección. Convierte ese deseo en una micro-acción concreta hoy."),
+    ("Asombro", 0.4, ["asombro", "asombrado", "sorprendido", "increible", "increíble", "maravillado"], "Mantener la capacidad de asombro mantiene tu mente abierta y receptiva a nuevas ideas."),
+    ("Interés", 0.4, ["interes", "interés", "interesado", "curiosidad", "curioso", "aprender", "investigando"], "Tu curiosidad es un gran motor de crecimiento. Aprovecha ese enfoque para avanzar en algo que te apasione."),
+    ("Alivio", 0.5, ["alivio", "aliviado", "por fin", "ya paso", "ya pasó", "descanso", "respiro"], "Qué bueno que esa carga disminuyó. Aprovecha este respiro para recargar energía."),
+    ("Calma", 0.6, ["calma", "calmado", "tranquilo", "tranquila", "paz", "sereno", "relajado"], "Disfruta este estado de serenidad; es una base excelente para tomar buenas decisiones."),
+    ("Satisfacción", 0.6, ["satisfecho", "satisfaccion", "satisfacción", "logre", "logré", "cumpli", "cumplí", "orgulloso"], "Reconoce tu propio esfuerzo: cada avance cumplido fortalece tu confianza."),
+    ("Admiración", 0.6, ["admiracion", "admiración", "admiro", "respeto", "ejemplo"], "Admirar cualidades en otros refleja valores que también puedes cultivar en ti."),
+    ("Inspiración", 0.7, ["inspirado", "inspiracion", "inspiración", "embeleso", "creativo", "arte", "musica", "música"], "Aprovecha esta chispa creativa para anotar tus ideas o dar forma a un proyecto."),
+    ("Gratitud", 0.7, ["gratitud", "agradecido", "agradecida", "gracias", "afortunado"], "La gratitud entrena tu atención hacia lo que sí funciona en tu vida."),
+    ("Afecto", 0.7, ["afecto", "carino", "cariño", "querer", "quiero mucho", "familia", "amigos", "aprecio"], "Cuidar tus vínculos afectivos es uno de los pilares más sólidos del bienestar emocional."),
+    ("Ilusión", 0.7, ["ilusion", "ilusión", "romance", "enamorado", "enamorada", "pareja", "cita"], "Disfruta esta etapa con autenticidad, comunicación clara y equilibrio personal."),
+    ("Diversión", 0.8, ["diversion", "diversión", "divertido", "risa", "riendo", "gracioso", "jugando"], "Reír y disfrutar el momento libera tensión y renueva tu ánimo."),
+    ("Motivación", 0.8, ["motivado", "motivacion", "motivación", "pasion", "pasión", "enfocado", "determinado"], "Esa determinación es oro: canalízala ahora mismo en tu tarea más importante."),
+    ("Entusiasmo", 0.9, ["entusiasmo", "entusiasmado", "emocionado", "emocionada", "euforia", "genial"], "¡Qué gran impulso! Aprovecha esa energía para dar un paso firme hacia tus metas."),
+    ("Alegría", 0.9, ["feliz", "alegre", "alegria", "alegría", "contento", "contenta", "bien", "excelente", "maravilloso"], "¡Qué gusto leer esto! Guarda este momento como recordatorio de lo bien que puedes sentirte."),
+    ("Neutral", 0.0, [], "Gracias por registrar tu día. La constancia de escribir fortalece tu autoconocimiento.")
 ]
+
+RETOS_RESPALDO = [
+    {"emocion_trigger": "Alegría", "tipo": "mejorar", "titulo": "Anclar un buen momento", "micro_accion": "Escribir 3 detalles de por qué hoy fue un buen día", "duracion_dias": 14},
+    {"emocion_trigger": "Tristeza", "tipo": "construir", "titulo": "Un buen momento al día", "micro_accion": "Anotar al final del día una cosa pequeña que salió bien", "duracion_dias": 14},
+    {"emocion_trigger": "Ansiedad", "tipo": "construir", "titulo": "Higiene del sueño", "micro_accion": "Apagar pantallas 30 minutos antes de dormir", "duracion_dias": 21},
+    {"emocion_trigger": "Miedo", "tipo": "construir", "titulo": "Paso valiente de 10 minutos", "micro_accion": "Dividir una tarea que me intimida y hacer solo los primeros 10 minutos", "duracion_dias": 14},
+    {"emocion_trigger": "Enojo", "tipo": "soltar", "titulo": "Pausa antes de reaccionar", "micro_accion": "Respirar 3 veces antes de responder cuando sienta coraje", "duracion_dias": 14},
+    {"emocion_trigger": "Neutral", "tipo": "construir", "titulo": "Estudio sin distracciones", "micro_accion": "25 minutos de estudio o lectura sin celular", "duracion_dias": 20}
+]
+
+def analizar_texto_27(texto):
+    t = texto.lower()
+    for emocion, punt, kws, resp in EMOCIONES_27:
+        if any(k in t for k in kws):
+            return emocion, punt, resp
+    return "Neutral", 0.0, EMOCIONES_27[-1][3]
 
 def obtener_reto_sugerido(emocion):
     try:
@@ -67,35 +111,28 @@ def calcular_precision_global():
         return {"evaluadas": 0, "precisas": 0, "porcentaje": None}
 
 
-# -------------------------------------------------------------------
-# 0. SALUD DEL SERVICIO
-# -------------------------------------------------------------------
 @app.route('/', methods=['GET'], strict_slashes=False)
 @app.route('/health', methods=['GET'], strict_slashes=False)
 def health():
-    return jsonify({"estado": "ok", "servicio": "EmotiData API"}), 200
+    return jsonify({"estado": "ok", "servicio": "EmotiData API", "emociones_soportadas": 27}), 200
 
 
-# -------------------------------------------------------------------
-# 1. RESUMEN DEL MENÚ PRINCIPAL (ESTUDIANTE)
-# -------------------------------------------------------------------
 @app.route('/api/usuario/resumen', defaults={'usuario_id': 'USR_EMMANUEL_01'}, methods=['GET'], strict_slashes=False)
 @app.route('/api/usuario/resumen/<usuario_id>', methods=['GET'], strict_slashes=False)
 @app.route('/api/usuarios/perfil/<usuario_id>', methods=['GET'], strict_slashes=False)
 def obtener_resumen_usuario(usuario_id):
     try:
         usuario = db.usuarios.find_one({"_id": usuario_id}) or db.usuarios.find_one({"_id": "USR_EMMANUEL_01"})
-        detalles = usuario.get("detalles_estudiante", {}) if usuario else {}
+        detalles = (usuario.get("detalles_estudiante") or {}) if usuario else {}
 
         ultimo_log = db.diario_logs.find_one({"usuario_id": usuario_id}, sort=[("fecha", DESCENDING)])
-        if not ultimo_log:
-            ultimo_log = db.diario_logs.find_one({"usuario_id": "USR_EMMANUEL_01"}, sort=[("fecha", DESCENDING)])
+        total_usuario = db.diario_logs.count_documents({"usuario_id": usuario_id})
 
         racha_db = detalles.get("racha_dias")
-        racha = int(racha_db) if racha_db is not None else 22
+        racha = int(racha_db) if racha_db is not None else total_usuario
 
-        ultima_emocion = str(ultimo_log.get("emocion", "Alegría")) if ultimo_log else "Alegría"
-        ultima_fecha = str(ultimo_log.get("fecha", "2026-10-30")) if ultimo_log else "2026-10-30"
+        ultima_emocion = str(ultimo_log.get("emocion", "Neutral")) if ultimo_log else "Sin registros"
+        ultima_fecha = str(ultimo_log.get("fecha", "--")) if ultimo_log else "--"
 
         return jsonify({
             "racha_dias": racha,
@@ -111,21 +148,19 @@ def obtener_resumen_usuario(usuario_id):
         return jsonify({"error": str(e)}), 500
 
 
-# -------------------------------------------------------------------
-# 2. LOGROS Y MEDALLAS
-# -------------------------------------------------------------------
 @app.route('/api/usuario/logros', defaults={'usuario_id': 'USR_EMMANUEL_01'}, methods=['GET'], strict_slashes=False)
 @app.route('/api/usuario/logros/<usuario_id>', methods=['GET'], strict_slashes=False)
 def obtener_logros_usuario(usuario_id):
     try:
         usuario = db.usuarios.find_one({"_id": usuario_id}) or db.usuarios.find_one({"_id": "USR_EMMANUEL_01"})
-        detalles = usuario.get("detalles_estudiante", {}) if usuario else {}
+        detalles = (usuario.get("detalles_estudiante") or {}) if usuario else {}
+        total_logs = db.diario_logs.count_documents({"usuario_id": usuario_id})
 
         racha_db = detalles.get("racha_dias")
-        racha = int(racha_db) if racha_db is not None else 22
+        racha = int(racha_db) if racha_db is not None else total_logs
 
         nivel_db = detalles.get("nivel")
-        nivel = int(nivel_db) if nivel_db is not None else 4
+        nivel = int(nivel_db) if nivel_db is not None else max(1, (total_logs // 3) + 1)
 
         metas_activas = db.metas_habitos.count_documents({"usuario_id": usuario_id, "estado": "activo"})
 
@@ -138,7 +173,7 @@ def obtener_logros_usuario(usuario_id):
                 "leyenda": f"🎯 Próximo logro: Nivel {nivel + 1} en progreso..."
             },
             "logros": [
-                {"titulo": "Primer Paso", "descripcion": "Registraste tu primera emoción en el diario.", "desbloqueado": True, "icono": "🏅"},
+                {"titulo": "Primer Paso", "descripcion": "Registraste tu primera emoción en el diario.", "desbloqueado": total_logs >= 1, "icono": "🏅"},
                 {"titulo": "Constancia (7 Días)", "descripcion": "Mantuviste una racha de registro por una semana.", "desbloqueado": racha >= 7, "icono": "🔥"},
                 {"titulo": "Autoconocimiento", "descripcion": "Alcanzaste el Nivel 3 de introspección.", "desbloqueado": nivel >= 3, "icono": "🧠"},
                 {"titulo": "Atrévete al Cambio", "descripcion": "Iniciaste tu primera meta de hábitos saludables.", "desbloqueado": metas_activas > 0, "icono": "🌱"}
@@ -148,9 +183,6 @@ def obtener_logros_usuario(usuario_id):
         return jsonify({"error": str(e)}), 500
 
 
-# -------------------------------------------------------------------
-# 3. ZONA RELAX / FRASES
-# -------------------------------------------------------------------
 @app.route('/api/relax/frases', methods=['GET'], strict_slashes=False)
 @app.route('/api/frases', methods=['GET'], strict_slashes=False)
 @app.route('/api/frases/aleatoria', methods=['GET'], strict_slashes=False)
@@ -172,9 +204,6 @@ def obtener_frases_relax():
         return jsonify({"frases": [{"texto": "Respira y mantén la calma.", "autor": "Buda"}]}), 200
 
 
-# -------------------------------------------------------------------
-# 4. REPORTE PSICOLÓGICO (COMPATIBLE CON C# + PRIVACIDAD BLINDADA)
-# -------------------------------------------------------------------
 @app.route('/api/diario/reporte_psicologica', defaults={'usuario_id': 'USR_EMMANUEL_01'}, methods=['GET'], strict_slashes=False)
 @app.route('/api/diario/reporte_psicologica/<usuario_id>', methods=['GET'], strict_slashes=False)
 @app.route('/api/psicologa/reporte/<usuario_id>', methods=['GET'], strict_slashes=False)
@@ -202,8 +231,7 @@ def obtener_reporte_psicologica(usuario_id):
             obs = (
                 f"Resumen estadístico ({total_entradas} registros recientes): "
                 f"Emoción predominante '{predominante}', índice emocional promedio {promedio}, "
-                f"nivel de alerta preventiva: {nivel_alerta}. "
-                f"(Los escritos privados están protegidos y ocultos)."
+                f"nivel de alerta preventiva: {nivel_alerta}."
             )
         else:
             nivel_alerta = "SIN DATOS"
@@ -244,15 +272,11 @@ def compartir_entrada_psicologa(log_id):
         )
         if res.matched_count == 0:
             return jsonify({"error": "Entrada no encontrada o no pertenece al usuario."}), 404
-        estado_txt = "compartida con tutoría" if autorizar else "marcada como privada nuevamente"
-        return jsonify({"mensaje": f"Entrada {estado_txt}.", "compartido_psicologa": autorizar}), 200
+        return jsonify({"mensaje": "Privacidad actualizada.", "compartido_psicologa": autorizar}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-# -------------------------------------------------------------------
-# 5. HISTORIAL DEL ESTUDIANTE
-# -------------------------------------------------------------------
 @app.route('/api/diario/historial', defaults={'usuario_id': 'USR_EMMANUEL_01'}, methods=['GET'], strict_slashes=False)
 @app.route('/api/diario/historial/<usuario_id>', methods=['GET'], strict_slashes=False)
 def obtener_historial(usuario_id):
@@ -278,9 +302,6 @@ def obtener_historial(usuario_id):
         return jsonify({"error": str(e)}), 500
 
 
-# -------------------------------------------------------------------
-# 6. LOGIN CON CONTRASEÑA CIFRADA + TRANSICIÓN SEGURA PARA C#
-# -------------------------------------------------------------------
 @app.route('/api/login', methods=['POST'], strict_slashes=False)
 def login():
     data = request.json or {}
@@ -313,7 +334,6 @@ def login():
             if not password_input or not check_password_hash(password_hash, password_input):
                 return jsonify({"error": "Contraseña incorrecta."}), 401
         else:
-            # Cuenta migrada sin password_hash todavía: si el usuario ingresa contraseña en la web, se cifra y guarda
             if password_input:
                 if len(password_input) < 4:
                     return jsonify({"error": "La contraseña debe tener al menos 4 caracteres."}), 400
@@ -364,9 +384,6 @@ def cambiar_password():
         return jsonify({"error": str(e)}), 500
 
 
-# -------------------------------------------------------------------
-# 7. REGISTRO DE DIARIO + PRIVACIDAD POR DEFECTO + RETO VINCULADO
-# -------------------------------------------------------------------
 @app.route('/api/diario/registrar', methods=['POST'], strict_slashes=False)
 @app.route('/api/diario/guardar', methods=['POST'], strict_slashes=False)
 def registrar_emocion():
@@ -376,34 +393,12 @@ def registrar_emocion():
     if not texto:
         return jsonify({"error": "El texto no puede estar vacío."}), 400
 
-    texto_lower = texto.lower()
-
-    if any(word in texto_lower for word in ["feliz", "bien", "alegre", "excelente", "genial", "motivado"]):
-        emocion_detectada = "Alegría"
-        puntuacion = 0.8
-        respuesta_ia = "¡Esa actitud es fantástica! Canaliza toda esa energía positiva para seguir avanzando."
-    elif any(word in texto_lower for word in ["triste", "tristeza", "mal", "deprimido", "llorar", "apagado"]):
-        emocion_detectada = "Tristeza"
-        puntuacion = -0.7
-        respuesta_ia = "Es completamente válido sentirse así. Tómate tu tiempo, respira y recuerda que no estás solo."
-    elif any(word in texto_lower for word in ["asustado", "miedo", "ansiedad", "nervioso", "estrés", "estres", "preocupado"]):
-        emocion_detectada = "Miedo / Ansiedad"
-        puntuacion = -0.8
-        respuesta_ia = "El impedimento a la acción avanza la acción. Intenta hacer el ejercicio de respiración en la Zona Relax."
-    elif any(word in texto_lower for word in ["enojado", "coraje", "rabia", "molesto", "frustrado", "harto"]):
-        emocion_detectada = "Enojo"
-        puntuacion = -0.6
-        respuesta_ia = "La frustración es señal de que algo te importa. Date un respiro profundo antes de reaccionar."
-    else:
-        emocion_detectada = "Neutral"
-        puntuacion = 0.0
-        respuesta_ia = "Gracias por compartir tus pensamientos de hoy. Mantener este hábito te ayuda a reflexionar."
-
+    emocion_detectada, puntuacion, respuesta_ia = analizar_texto_27(texto)
     reto_sugerido = obtener_reto_sugerido(emocion_detectada)
 
     nuevo_log = {
         "usuario_id": id_usuario,
-        "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "fecha": ahora_mx().strftime("%Y-%m-%d %H:%M:%S"),
         "texto_original": texto,
         "emocion": emocion_detectada,
         "puntuacion": puntuacion,
@@ -430,9 +425,6 @@ def registrar_emocion():
     }), 201
 
 
-# -------------------------------------------------------------------
-# 8. MODIFICACIÓN DE CONDUCTA: HÁBITOS SINCRONIZADOS EN MONGODB
-# -------------------------------------------------------------------
 @app.route('/api/habitos/catalogo', methods=['GET'], strict_slashes=False)
 def obtener_catalogo_habitos():
     emocion = request.args.get("emocion")
@@ -442,6 +434,8 @@ def obtener_catalogo_habitos():
             filtro["emocion_trigger"] = emocion
         docs = list(db.retos_catalogo.find(filtro))
         if docs:
+            if not emocion and len(docs) > 12:
+                docs = random.sample(docs, 12)
             catalogo = [{
                 "id": str(d["_id"]),
                 "emocion_trigger": d.get("emocion_trigger", "Neutral"),
@@ -459,9 +453,31 @@ def obtener_catalogo_habitos():
 
 @app.route('/api/habitos/<usuario_id>', methods=['GET'], strict_slashes=False)
 def obtener_metas_habitos(usuario_id):
-    mes_actual = datetime.now().strftime("%Y-%m")
-    hoy_str = datetime.now().strftime("%Y-%m-%d")
+    mes_actual = ahora_mx().strftime("%Y-%m")
+    hoy_str = ahora_mx().strftime("%Y-%m-%d")
     try:
+        # Si es un usuario nuevo sin historial de metas, precargar 3 metas iniciales
+        if db.metas_habitos.count_documents({"usuario_id": usuario_id}) == 0:
+            iniciales = []
+            for tipo in ("construir", "mejorar", "soltar"):
+                cand = list(db.retos_catalogo.find({"tipo": tipo, "activo": {"$ne": False}}))
+                if cand:
+                    r = random.choice(cand)
+                    iniciales.append({
+                        "usuario_id": usuario_id,
+                        "reto_origen_id": str(r["_id"]),
+                        "tipo": tipo,
+                        "titulo": r.get("titulo", ""),
+                        "micro_accion": r.get("micro_accion", ""),
+                        "mes": mes_actual,
+                        "meta_dias": int(r.get("duracion_dias", 20)),
+                        "dias_cumplidos": [],
+                        "estado": "activo",
+                        "fecha_creacion": ahora_mx().strftime("%Y-%m-%d %H:%M:%S")
+                    })
+            if iniciales:
+                db.metas_habitos.insert_many(iniciales)
+
         metas_db = list(db.metas_habitos.find({
             "usuario_id": usuario_id,
             "mes": mes_actual,
@@ -484,7 +500,7 @@ def obtener_metas_habitos(usuario_id):
             porcentaje = min(100, round((len(dias) / max(1, meta_dias)) * 100))
 
             racha = 0
-            cursor = datetime.now().date()
+            cursor = ahora_mx().date()
             if cursor.strftime("%Y-%m-%d") not in dias:
                 cursor -= timedelta(days=1)
             while cursor.strftime("%Y-%m-%d") in dias:
@@ -520,14 +536,12 @@ def obtener_metas_habitos(usuario_id):
                 "correlacion_animo": pista
             })
 
-        # Estadísticas históricas globales del usuario para medallas
         todas_metas = list(db.metas_habitos.find({"usuario_id": usuario_id, "estado": {"$ne": "eliminada"}}))
         total_victorias = sum(len(x.get("dias_cumplidos", [])) for x in todas_metas)
         alguna_7 = any(len(x.get("dias_cumplidos", [])) >= 7 for x in todas_metas)
         alguna_cumplida = any(len(x.get("dias_cumplidos", [])) >= int(x.get("meta_dias", 20)) for x in todas_metas)
         mes_oro = len(lista_metas) >= 3 and all(x["porcentaje"] >= 100 for x in lista_metas)
 
-        # Revisar si tiene metas del mes anterior para ofrecer repetir
         previas_count = db.metas_habitos.count_documents({
             "usuario_id": usuario_id,
             "mes": {"$ne": mes_actual},
@@ -560,7 +574,7 @@ def asignar_meta_habito():
     if not usuario_id or not titulo or not micro_accion:
         return jsonify({"error": "Faltan datos obligatorios (usuario_id, titulo, micro_accion)."}), 400
 
-    mes_actual = datetime.now().strftime("%Y-%m")
+    mes_actual = ahora_mx().strftime("%Y-%m")
     try:
         activas = db.metas_habitos.count_documents({"usuario_id": usuario_id, "mes": mes_actual, "estado": "activo"})
         if activas >= 5:
@@ -576,7 +590,7 @@ def asignar_meta_habito():
             "meta_dias": max(5, min(31, int(data.get("meta_dias", 20)))),
             "dias_cumplidos": [],
             "estado": "activo",
-            "fecha_creacion": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "fecha_creacion": ahora_mx().strftime("%Y-%m-%d %H:%M:%S")
         }
         res = db.metas_habitos.insert_one(nueva_meta)
         return jsonify({"mensaje": "Meta de hábito guardada en tu cuenta", "id": str(res.inserted_id)}), 201
@@ -591,7 +605,7 @@ def repetir_metas_mes_anterior():
     if not usuario_id:
         return jsonify({"error": "Falta usuario_id"}), 400
 
-    mes_actual = datetime.now().strftime("%Y-%m")
+    mes_actual = ahora_mx().strftime("%Y-%m")
     try:
         previas = list(db.metas_habitos.find({
             "usuario_id": usuario_id,
@@ -613,7 +627,7 @@ def repetir_metas_mes_anterior():
                 "meta_dias": int(p.get("meta_dias", 20)),
                 "dias_cumplidos": [],
                 "estado": "activo",
-                "fecha_creacion": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                "fecha_creacion": ahora_mx().strftime("%Y-%m-%d %H:%M:%S")
             })
             creadas += 1
         return jsonify({"mensaje": f"Se repitieron {creadas} metas para este mes."}), 201
@@ -626,7 +640,7 @@ def checkin_meta_habito():
     data = request.json or {}
     meta_id = data.get("meta_id")
     usuario_id = data.get("usuario_id")
-    fecha_dia = str(data.get("fecha") or datetime.now().strftime("%Y-%m-%d"))[:10]
+    fecha_dia = str(data.get("fecha") or ahora_mx().strftime("%Y-%m-%d"))[:10]
 
     if not meta_id or not usuario_id:
         return jsonify({"error": "Se requiere meta_id y usuario_id."}), 400
@@ -658,9 +672,6 @@ def eliminar_meta_habito(meta_id):
         return jsonify({"error": str(e)}), 500
 
 
-# -------------------------------------------------------------------
-# 9. PANEL COMPLETO DE PSICOLOGÍA (ESTUDIO MENSUAL, GRÁFICAS, PRECISIÓN Y NOTAS)
-# -------------------------------------------------------------------
 @app.route('/api/usuarios/configuracion', defaults={'id_usuario': 'USR_EMMANUEL_01'}, methods=['GET'], strict_slashes=False)
 @app.route('/api/usuarios/configuracion/<id_usuario>', methods=['GET'], strict_slashes=False)
 def obtener_configuracion_tema(id_usuario):
@@ -674,7 +685,7 @@ def obtener_estudiantes():
         lista_estudiantes = []
         for est in estudiantes_db:
             id_est = str(est.get("_id", "")).strip()
-            detalles = est.get("detalles_estudiante", {}) or {}
+            detalles = (est.get("detalles_estudiante") or {})
             ultimo_log = db.diario_logs.find_one({"usuario_id": id_est}, sort=[("fecha", DESCENDING)])
             puntuacion = float(ultimo_log.get("puntuacion", 0)) if ultimo_log else 0.0
             total_logs = db.diario_logs.count_documents({"usuario_id": id_est})
@@ -710,25 +721,21 @@ def obtener_estudio_mensual_estudiante(usuario_id):
 
         todos_logs = list(db.diario_logs.find({"usuario_id": usuario_id}).sort("fecha", DESCENDING))
         meses_set = sorted(list({str(l.get("fecha", ""))[:7] for l in todos_logs if len(str(l.get("fecha", ""))) >= 7}), reverse=True)
-        mes_actual = datetime.now().strftime("%Y-%m")
+        mes_actual = ahora_mx().strftime("%Y-%m")
         if mes_actual not in meses_set:
             meses_set.insert(0, mes_actual)
 
         mes = mes_solicitado if mes_solicitado else meses_set[0]
         logs_mes = [l for l in todos_logs if str(l.get("fecha", "")).startswith(mes)]
 
-        # 1. Distribución emocional del mes
-        emociones_base = ["Alegría", "Tristeza", "Miedo / Ansiedad", "Enojo", "Neutral"]
-        conteo = {e: 0 for e in emociones_base}
+        conteo = {}
         suma_punt = 0.0
         negativos = 0
         por_dia = {}
 
         for l in logs_mes:
             em = str(l.get("emocion", "Neutral"))
-            if em not in conteo:
-                conteo[em] = 0
-            conteo[em] += 1
+            conteo[em] = conteo.get(em, 0) + 1
             p = float(l.get("puntuacion", 0.0))
             suma_punt += p
             if p < -0.5:
@@ -740,21 +747,19 @@ def obtener_estudio_mensual_estudiante(usuario_id):
         promedio = round(suma_punt / total_mes, 2) if total_mes > 0 else 0.0
         nivel_alerta = "SIN DATOS" if total_mes == 0 else ("ALTA" if negativos >= 3 else ("MODERADA" if promedio < -0.2 else "ESTABLE"))
 
-        distribucion = [
-            {
-                "emocion": e,
-                "conteo": conteo[e],
-                "porcentaje": round((conteo[e] / total_mes) * 100) if total_mes > 0 else 0
-            }
-            for e in emociones_base
-        ]
+        if conteo:
+            distribucion = [
+                {"emocion": e, "conteo": c, "porcentaje": round((c / total_mes) * 100)}
+                for e, c in sorted(conteo.items(), key=lambda x: x[1], reverse=True)
+            ]
+        else:
+            distribucion = [{"emocion": e, "conteo": 0, "porcentaje": 0} for e in ["Alegría", "Calma", "Ansiedad", "Tristeza", "Neutral"]]
 
-        # 2. Serie diaria del mes (para gráfica de evolución y calendario)
         try:
             anio, num_mes = map(int, mes.split("-"))
             dias_en_mes = calendar.monthrange(anio, num_mes)[1]
         except Exception:
-            anio, num_mes, dias_en_mes = datetime.now().year, datetime.now().month, 30
+            anio, num_mes, dias_en_mes = ahora_mx().year, ahora_mx().month, 30
 
         serie_diaria = []
         for dia in range(1, dias_en_mes + 1):
@@ -774,7 +779,6 @@ def obtener_estudio_mensual_estudiante(usuario_id):
                 "registros": len(items)
             })
 
-        # 3. Hábitos del alumno en ese mes
         metas_db = list(db.metas_habitos.find({"usuario_id": usuario_id, "mes": mes, "estado": "activo"}))
         habitos_lista = []
         for m in metas_db:
@@ -789,7 +793,6 @@ def obtener_estudio_mensual_estudiante(usuario_id):
                 "porcentaje": min(100, round((len(dias_c) / max(1, meta_d)) * 100))
             })
 
-        # 4. Recomendaciones generadas por EmotiData + Evaluación de Precisión (respetando privacidad)
         recomendaciones = []
         eval_total, eval_precisas = 0, 0
         for l in logs_mes:
@@ -812,7 +815,6 @@ def obtener_estudio_mensual_estudiante(usuario_id):
                 "texto_compartido": str(l.get("texto_original", "")) if compartido else None
             })
 
-        # 5. Notas clínicas de la psicóloga (colección notas_psicológicas)
         notas_raw = list(db["notas_psicológicas"].find({
             "$or": [{"estudiante_id": usuario_id}, {"usuario_id": usuario_id}]
         }).sort("fecha", DESCENDING))
@@ -864,7 +866,7 @@ def obtener_estudio_mensual_estudiante(usuario_id):
 def evaluar_precision_recomendacion():
     data = request.json or {}
     log_id = data.get("log_id")
-    precision = data.get("precision")  # "precisa" o "no_precisa"
+    precision = data.get("precision")
     comentario = str(data.get("comentario", "")).strip()
     psicologa_id = str(data.get("psicologa_id", "USR_DULCE_02")).strip()
 
@@ -878,7 +880,7 @@ def evaluar_precision_recomendacion():
                 "precision_psicologa": precision,
                 "comentario_precision": comentario,
                 "evaluado_por": psicologa_id,
-                "fecha_evaluacion": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                "fecha_evaluacion": ahora_mx().strftime("%Y-%m-%d %H:%M:%S")
             }}
         )
         if res.matched_count == 0:
@@ -911,7 +913,7 @@ def guardar_nota_psicologa():
             "autor": autor,
             "notas": texto_nota,
             "observaciones": texto_nota,
-            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "fecha": ahora_mx().strftime("%Y-%m-%d %H:%M:%S")
         }
         res = db["notas_psicológicas"].insert_one(doc)
         return jsonify({"mensaje": "Nota clínica guardada en Atlas.", "id": str(res.inserted_id)}), 201
@@ -944,7 +946,7 @@ def registrar_usuario():
             "correo": correo,
             "rol": data.get("rol", "estudiante"),
             "activo": True,
-            "fecha_registro": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "fecha_registro": ahora_mx().strftime("%Y-%m-%d %H:%M:%S"),
             "detalles_estudiante": {
                 "matricula": matricula,
                 "carrera": carrera,
@@ -962,5 +964,5 @@ def registrar_usuario():
 
 
 if __name__ == '__main__':
-    print("🚀 Servidor Flask (API EmotiData) Completo...")
+    print("🚀 Servidor Flask (API EmotiData) Completo (27 emociones)...")
     app.run(host='127.0.0.1', port=5000, debug=True)
