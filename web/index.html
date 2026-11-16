@@ -834,6 +834,11 @@
       color: #fff;
       border-color: #c0392b
     }
+      .chk { display: flex !important; gap: 10px; align-items: flex-start; color: var(--ink) !important; }
+    .chk input { width: auto; min-height: auto; margin-top: 5px; flex: none; }
+    dialog a { color: var(--acc); }
+    .reply .ayuda { margin-top: 12px; border-left: 4px solid var(--acc); padding: 8px 12px; background: rgba(127, 127, 127, .12); border-radius: 4px 12px 12px 4px; }
+    .aviso h3 { font-family: var(--fh); font-size: 1.05rem; margin: 12px 0 2px; }
   </style>
 </head>
 
@@ -873,6 +878,15 @@
           <option value="mia">Mi imagen…</option>
         </select></label>
       <input type="file" id="fondoImg" accept="image/*" hidden>
+      <label>Pingüinos
+        <select id="pingSel">
+          <option value="seguir">Me acompañan (siguen el cursor)</option>
+          <option value="quieto">Se quedan en su rincón</option>
+          <option value="mudo">Sin globos de texto</option>
+          <option value="oculto">Ocultar</option>
+        </select>
+      </label>
+      <label class="chk" id="lComp" hidden><input type="checkbox" id="cComp"><span>Compartir indicadores generales de mi ánimo con la psicóloga (mis textos siguen siendo privados).</span></label>
       <label>Tamaño del texto
         <div class="tam" id="tam"><button type="button" class="ghost" data-z=".9">A−</button><button type="button"
             class="ghost" data-z="1">A</button><button type="button" class="ghost" data-z="1.15">A+</button><button
@@ -915,6 +929,61 @@
       <button class="btn">Empezar</button>
     </form>
   </dialog>
+  <dialog id="dReg">
+    <form id="fRegistro" class="bv">
+      <h2>Crea tu cuenta</h2>
+      <p class="mut">Te enviaremos un correo para confirmar que eres tú.</p>
+      <label>Nombre o apodo<input id="rNombre" maxlength="60" autocomplete="nickname" required></label>
+      <label>Correo<input id="rCorreo" type="email" maxlength="120" autocomplete="email" required></label>
+      <label>Contraseña<input id="rPass" type="password" minlength="8" autocomplete="new-password" required>
+        <small>Mínimo 8 caracteres, con letras y números.</small></label>
+      <label>Repite la contraseña<input id="rPass2" type="password" autocomplete="new-password" required></label>
+      <label class="chk"><input type="checkbox" id="rAviso" required><span>Leí y acepto el <a href="#" id="verAviso">aviso de privacidad</a>, incluido el tratamiento de lo que escribo como dato sensible.</span></label>
+      <label class="chk"><input type="checkbox" id="rEdad" required><span>Soy mayor de edad, o mi madre, padre o tutor autorizó mi uso.</span></label>
+      <label class="chk"><input type="checkbox" id="rComp"><span>(Opcional) Quiero que la psicóloga vea indicadores generales de mi ánimo. Mis textos siguen siendo privados y puedo cambiarlo cuando quiera.</span></label>
+      <p id="rMsg" class="err" role="alert"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="bRegistro">Crear mi cuenta</button><button class="ghost" type="button" data-cerrar="dReg">Cancelar</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="dAviso">
+    <div class="bv aviso">
+      <h2>Aviso de privacidad</h2>
+      <small>Versión 2026-11 · BORRADOR: complétalo y revísalo con la psicóloga o asesoría legal antes de abrir el registro.</small>
+      <h3>1. Quién es responsable</h3><p>[NOMBRE DEL RESPONSABLE / INSTITUCIÓN] trata tus datos personales. Contacto: [CORREO DE CONTACTO].</p>
+      <h3>2. Qué datos recabamos</h3><p>Nombre o apodo, correo, contraseña (guardada cifrada), lo que escribes en tu diario, la emoción que identificamos, tus metas y tus avances.</p>
+      <h3>3. Datos sensibles</h3><p>Lo que escribes puede revelar tu estado emocional, que es un dato sensible. Solo lo tratamos con tu consentimiento expreso, que das al aceptar este aviso.</p>
+      <h3>4. Para qué los usamos</h3><p>Para que funcione tu diario, responderte, mostrarte tu evolución y tus logros. Solo si tú lo permites, para que la psicóloga vea indicadores generales de tu ánimo. De forma anónima y agregada, para mejorar la herramienta.</p>
+      <h3>5. Quién ve lo que escribes</h3><p>Solo tú. La psicóloga no ve tus textos: ve únicamente indicadores generales si lo autorizas, y las entradas que decidas compartir una por una. No avisamos a nadie sin tu permiso; si detectamos palabras que sugieren riesgo, te mostramos líneas de ayuda.</p>
+      <h3>6. Con quién los compartimos</h3><p>No vendemos tus datos. Usamos proveedores de alojamiento, base de datos y correo que los tratan por nuestra cuenta.</p>
+      <h3>7. Cuánto tiempo los conservamos</h3><p>Mientras tengas cuenta. Las cuentas sin confirmar se eliminan a los 7 días. Puedes pedir que borremos tu cuenta y tus datos.</p>
+      <h3>8. Tus derechos</h3><p>Puedes acceder, rectificar, cancelar u oponerte al uso de tus datos (derechos ARCO) y retirar tu consentimiento escribiendo a [CORREO DE CONTACTO].</p>
+      <h3>9. Menores de edad</h3><p>Si tienes menos de 18 años necesitas la autorización de tu madre, padre o tutor.</p>
+      <h3>10. Importante</h3><p>EmotiData no es un servicio médico ni de emergencia y no sustituye la atención de un profesional. Si estás en crisis, llama a la Línea de la Vida: 800 911 2000 (24 horas) o al 911.</p>
+      <button class="btn" type="button" data-cerrar="dAviso">Cerrar</button>
+    </div>
+  </dialog>
+
+  <dialog id="dOlvide">
+    <form id="fOlvide" class="bv">
+      <h2>Crea o cambia tu contraseña</h2>
+      <p class="mut">Escribe tu correo y te enviaremos un enlace válido por 1 hora.</p>
+      <label>Correo<input id="oCorreo" type="email" maxlength="120" autocomplete="email" required></label>
+      <p id="oMsg" role="status"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn">Enviar enlace</button><button class="ghost" type="button" data-cerrar="dOlvide">Cerrar</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="dEnlace">
+    <form id="fEnlace" class="bv">
+      <h2 id="eTit"></h2>
+      <p id="eTxt" class="mut"></p>
+      <label id="eLbl" hidden>Nueva contraseña<input id="ePass" type="password" minlength="8" autocomplete="new-password"></label>
+      <p id="eMsg" role="status"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="bEnlace"></button><button class="ghost" type="button" data-cerrar="dEnlace">Cerrar</button></div>
+    </form>
+  </dialog>
+
   <span id="estado">Conectando con el servidor…</span>
 
   <!-- ===== PANTALLA DE INICIO DE SESIÓN ===== -->
@@ -929,6 +998,12 @@
       <button class="btn" id="bLogin">Entrar</button>
       <p id="lerr" class="err" role="alert"></p>
     </form>
+    <p style="margin-top:14px;display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center">
+      <button class="ghost" type="button" id="bCrear" hidden>Crear cuenta</button>
+      <button class="ghost" type="button" id="bOlvide">Olvidé mi contraseña</button>
+      <button class="ghost" type="button" id="bReenviar" hidden>Reenviar correo de confirmación</button>
+    </p>
+    <p id="lok" class="okmsg" role="status"></p>
     <p style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap"><button class="ghost" type="button"
         id="bAj2">Ajustes</button><button class="ghost" type="button" id="bBienv2">¿Qué es EmotiData?</button></p>
   </main>
@@ -1122,6 +1197,7 @@
     </section>
   </div>
 
+  <script src="pinguinos.js"></script>
   <script>
     /* ===== CONFIG ===== */
     const API_BASE = "https://emotidata-backend.onrender.com";
@@ -1163,6 +1239,7 @@
       st.setProperty("--bgi", p.bgi || "none");
       $("#tema").value = t;
       aplicarFondo();
+      if (window.PIN) PIN.tema();
     }
     function emo(e) { if (e) { lset("emoti_emo", e); aplicarTema(); } }
     $("#tema").onchange = e => { lset("emoti_tema", e.target.value); aplicarTema(); };
@@ -1176,7 +1253,8 @@
       try {
         const r = await fetch(API_BASE + path, { method, headers: h, body: body ? JSON.stringify(body) : undefined, signal: ctrl.signal });
         const d = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(d.error || "Error " + r.status);
+        if (r.status === 401 && session && !path.startsWith("/api/auth/") && path !== "/api/login") { salir(); $("#lerr").textContent = d.error || "Tu sesión expiró. Inicia sesión de nuevo."; }
+        if (!r.ok) { const er = new Error(d.error || "Error " + r.status); er.datos = d; er.status = r.status; throw er; }
         return d;
       } catch (e) {
         if (e.name === "AbortError") throw new Error("El servidor tardó demasiado. Intenta de nuevo.");
@@ -1192,6 +1270,7 @@
     }
 
     function entrar() {
+      if (window.PIN) PIN.sesion(session);
       $("#login").hidden = true;
       $("#dPassBox").hidden = false;
       if (session.rol === "psicologa") {
@@ -1206,14 +1285,16 @@
         $("#nom").textContent = session.nombre;
         $("#quien").textContent = session.nombre;
         show("inicio");
+        cargarConsentimiento();
         const kb = "emoti_bienv_" + session.id;
         if (!lget(kb)) { lset(kb, "1"); abrir("#dBienv"); }
       }
     }
 
     function salir() {
+      if (window.PIN) PIN.sesion(null);
       session = null; try { sessionStorage.removeItem("emoti"); } catch (e) { }
-      lset("emoti_emo", null); aplicarTema(); $("#chat").innerHTML = "";
+      lset("emoti_emo", null); aplicarTema(); $("#chat").innerHTML = ""; limpiarCaches();
       $("#dPassBox").hidden = true;
       $("#app").hidden = true; $("#appPsico").hidden = true;
       $("#login").hidden = false; $("#usuario").value = ""; $("#password").value = "";
@@ -1221,6 +1302,7 @@
 
     const vistas = { inicio: cargarInicio, registrar: () => { }, historial: cargarHistorial, logros: () => { cargarLogros(); cargarCambio(); }, relax: cargarRelax, chat: iniciarChat, cambio: cargarCambio };
     function show(v) {
+      if (window.PIN) PIN.tab(v);
       document.querySelectorAll(".view").forEach(x => x.hidden = x.id !== "v-" + v);
       document.querySelectorAll("#navEst button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
       vistas[v]();
@@ -1230,6 +1312,67 @@
       document.querySelectorAll(".pview").forEach(x => x.hidden = x.id !== "vp-" + v);
       document.querySelectorAll("#navPsico button").forEach(b => b.classList.toggle("on", b.dataset.vp === v));
     }
+
+    /* ---------- Cuenta nueva, confirmación por correo y privacidad ---------- */
+    let cidActual = null, cidTexto = "";
+    function cidPara(t) { /* mismo identificador mientras el texto no cambie: un reintento nunca duplica la entrada */
+      if (t !== cidTexto || !cidActual) { cidTexto = t; cidActual = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)).replace(/[^A-Za-z0-9_-]/g, ""); }
+      return cidActual;
+    }
+    function limpiarCaches() { try { Object.keys(localStorage).filter(k => k.startsWith("emoti_h_")).forEach(k => localStorage.removeItem(k)); } catch (e) { } }
+    if (lget("emoti_cache_v") !== "2") { limpiarCaches(); lset("emoti_cache_v", "2"); }
+    function cerrar(id) { const d = $("#" + id); if (d.close) d.close(); else d.removeAttribute("open"); }
+    document.addEventListener("click", e => {
+      const c = e.target.closest("[data-cerrar]"); if (c) cerrar(c.dataset.cerrar);
+      if (e.target.id === "verAviso") { e.preventDefault(); abrir("#dAviso"); }
+    });
+    const REG_HTML = $("#fRegistro").innerHTML;
+    async function cargarConfigAuth() { try { $("#bCrear").hidden = !(await api("/api/auth/config")).registro; } catch (e) { } }
+    $("#bCrear").onclick = () => { $("#fRegistro").innerHTML = REG_HTML; abrir("#dReg"); };
+    $("#bOlvide").onclick = () => abrir("#dOlvide");
+    $("#fRegistro").onsubmit = async e => {
+      e.preventDefault(); const m = $("#rMsg"); m.textContent = "";
+      if ($("#rPass").value !== $("#rPass2").value) { m.textContent = "Las contraseñas no coinciden."; return; }
+      const b = $("#bRegistro"); b.disabled = true; b.textContent = "Creando…";
+      try {
+        const d = await api("/api/auth/registro", { nombre: $("#rNombre").value.trim(), correo: $("#rCorreo").value.trim(), password: $("#rPass").value, acepta_aviso: $("#rAviso").checked, mayor_edad: $("#rEdad").checked, compartir_psicologa: $("#rComp").checked });
+        $("#fRegistro").innerHTML = `<h2>Revisa tu correo</h2><p>${esc(d.mensaje)}</p><p class="mut">Abre el enlace del mensaje para confirmar tu cuenta y después inicia sesión. El enlace dura 48 horas.</p><button class="btn" type="button" data-cerrar="dReg">Entendido</button>`;
+      } catch (err) { m.textContent = err.message; b.disabled = false; b.textContent = "Crear mi cuenta"; }
+    };
+    $("#fOlvide").onsubmit = async e => {
+      e.preventDefault(); const m = $("#oMsg");
+      try { const d = await api("/api/auth/olvide", { correo: $("#oCorreo").value.trim() }); m.className = "okmsg"; m.textContent = d.mensaje; }
+      catch (err) { m.className = "err"; m.textContent = err.message; }
+    };
+    $("#bReenviar").onclick = async () => {
+      const c = $("#usuario").value.trim();
+      if (!c.includes("@")) { $("#lerr").textContent = "Escribe tu correo en el primer campo y vuelve a pulsar."; return; }
+      try { $("#lok").textContent = (await api("/api/auth/reenviar", { correo: c })).mensaje; $("#lerr").textContent = ""; } catch (err) { $("#lerr").textContent = err.message; }
+    };
+    function procesarEnlace() { /* enlaces del correo: #verificar=TOKEN o #restablecer=TOKEN */
+      const m = location.hash.match(/^#(verificar|restablecer)=([\w\-\.]+)$/); if (!m) return;
+      const modo = m[1], token = m[2], b = $("#bEnlace"), msg = $("#eMsg");
+      history.replaceState(null, "", location.pathname + location.search); /* el token no queda en el historial */
+      msg.textContent = ""; msg.className = "";
+      if (modo === "verificar") { $("#eTit").textContent = "Confirma tu cuenta"; $("#eTxt").textContent = "Pulsa el botón para activar tu cuenta de EmotiData."; $("#eLbl").hidden = true; $("#ePass").required = false; b.textContent = "Confirmar mi cuenta"; }
+      else { $("#eTit").textContent = "Elige tu contraseña"; $("#eTxt").textContent = "Mínimo 8 caracteres, con letras y números."; $("#eLbl").hidden = false; $("#ePass").required = true; b.textContent = "Guardar contraseña"; }
+      b.hidden = false; b.disabled = false;
+      $("#fEnlace").onsubmit = async ev => {
+        ev.preventDefault(); b.disabled = true;
+        try {
+          const d = await api(modo === "verificar" ? "/api/auth/verificar" : "/api/auth/restablecer", modo === "verificar" ? { token } : { token, password: $("#ePass").value });
+          msg.className = "okmsg"; msg.textContent = d.mensaje + " Cierra esta ventana e inicia sesión."; b.hidden = true; $("#ePass").value = "";
+        } catch (err) { msg.className = "err"; msg.textContent = err.message; b.disabled = false; }
+      };
+      abrir("#dEnlace");
+    }
+    async function cargarConsentimiento() {
+      try { const y = await api("/api/auth/yo"); $("#cComp").checked = !!y.compartir_con_psicologa; $("#lComp").hidden = false; } catch (e) { }
+    }
+    $("#cComp").onchange = async e => {
+      try { await api("/api/usuario/consentimiento", { compartir_con_psicologa: e.target.checked }); }
+      catch (err) { e.target.checked = !e.target.checked; alert(err.message); }
+    };
 
     /* ---------- Login y cambio de contraseña ---------- */
     $("#fLogin").onsubmit = async e => {
@@ -1243,7 +1386,7 @@
         session = { id: d.id || d.usuario_id, nombre: d.nombre || d.nombre_completo || "Usuario", rol, token: d.token };
         try { sessionStorage.setItem("emoti", JSON.stringify(session)); } catch (x) { }
         entrar();
-      } catch (err) { $("#lerr").textContent = err.message; }
+      } catch (err) { $("#lerr").textContent = err.message; $("#bReenviar").hidden = !(err.datos && err.datos.pendiente_verificacion); }
       b.disabled = false; b.textContent = "Entrar";
     };
 
@@ -1278,7 +1421,7 @@
       const b = $("#bReg"), out = $("#regOut"); b.disabled = true; b.textContent = "Guardando…";
       const w = setTimeout(() => { b.textContent = "Despertando al servidor, un momento…"; }, 5000);
       try {
-        const d = await api("/api/diario/registrar", { usuario_id: session.id, texto });
+        const d = await api("/api/diario/registrar", { usuario_id: session.id, texto, cid: cidPara(texto) });
         emo(d.emocion);
         ultimoRetoSugerido = d.reto_sugerido || null;
         const retoHtml = ultimoRetoSugerido
@@ -1292,8 +1435,10 @@
                <small id="retoMsg"></small>
              </div>`
           : "";
-        out.innerHTML = `<div class="reply"><b>${esc(d.emocion)}</b><p>${esc(d.mensaje_empatico)}</p>${retoHtml}</div>`;
-        $("#texto").value = "";
+        const ayudaHtml = d.ayuda ? `<div class="ayuda"><b>${esc(d.ayuda.mensaje)}</b><br>${(d.ayuda.lineas || []).map(l => `${esc(l.nombre)}: <b>${esc(l.telefono)}</b> (${esc(l.detalle)})`).join("<br>")}</div>` : "";
+        out.innerHTML = `<div class="reply"><b>${esc(d.emocion)}</b><p>${esc(d.mensaje_empatico)}</p>${ayudaHtml}${retoHtml}</div>`;
+        $("#texto").value = ""; cidActual = null;
+        if (window.PIN) PIN.evento(d.ayuda ? "riesgo" : "guardado");
       } catch (err) { out.innerHTML = `<p class="err">${esc(err.message)}</p>`; }
       clearTimeout(w); b.disabled = false; b.textContent = "Guardar";
     };
@@ -1333,14 +1478,14 @@
     $("#leyenda").innerHTML = Object.keys(P).map(e => `<span><i class="dot" style="background:${P[e].acc}"></i>${e}</span>`).join("");
     async function cargarHistorial() {
       const k = "emoti_h_" + session.id;
-      try { pintar(JSON.parse(lget(k) || "[]")); } catch (e) { }
+      try { pintar(JSON.parse(lget(k) || "[]"), true); } catch (e) { }
       try {
         const es = (await api("/api/diario/historial/" + encodeURIComponent(session.id))).entradas || [];
-        lset(k, JSON.stringify(es.slice(0, 300)));
+        lset(k, JSON.stringify(es.slice(0, 300).map(x => ({ id: x.id, fecha: x.fecha, emocion: x.emocion, puntuacion: x.puntuacion })))); /* sin textos: tu diario no se guarda en el dispositivo */
         pintar(es);
       } catch (e) { if (!lget(k)) $("#lista").innerHTML = `<p class="err">${esc(e.message)}</p>`; }
     }
-    function pintar(es) {
+    function pintar(es, sinTexto) {
       if (!es.length) { $("#mes").innerHTML = ""; $("#lista").innerHTML = '<p class="mut">Todavía no hay entradas. Cuando escribas la primera, tu mes empezará a colorearse.</p>'; return; }
       const f = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
       const por = {}; es.forEach(x => { const d = String(x.fecha).slice(0, 10); if (!por[d]) por[d] = x.emocion; });
@@ -1351,6 +1496,7 @@
         const st = (i === 0 ? `grid-column-start:${off + 1};` : "") + (c.e ? `background:${col(c.e)};` : "");
         return `<div class="dia${c.e ? " on" : ""}" style="${st}" title="${esc(c.k + (c.e ? " · " + c.e : ""))}">${c.n}</div>`;
       }).join("");
+      if (sinTexto) { $("#lista").innerHTML = '<div class="skel"></div>'; return; }
       $("#lista").innerHTML = es.slice(0, 30).map(x => {
         const comp = !!x.compartido_psicologa;
         return `<div class="item"><i class="dot" style="background:${col(x.emocion)}"></i><div style="flex:1">
@@ -1829,6 +1975,8 @@
     aplicarLectura();
     despertar();
     setInterval(() => { if (!document.hidden) despertar(); }, 600000);
+    cargarConfigAuth();
+    procesarEnlace();
     if (session && session.id) entrar(); else $("#login").hidden = false;
   </script>
 </body>

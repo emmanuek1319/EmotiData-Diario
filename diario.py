@@ -1,6 +1,7 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 from pymongo import MongoClient, DESCENDING
+from pymongo.errors import DuplicateKeyError
 from bson.objectid import ObjectId
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta, timezone
@@ -65,19 +66,24 @@ except Exception as e:
     print(f"❌ Error al conectar a MongoDB: {e}")
     raise
 
+import emoti_auth
+import emoti_motor
+from emoti_auth import requiere_sesion, requiere_rol, propio, error_interno
+emoti_auth.init(app, db)
+
 # Catálogo de las 27 emociones: (emocion, puntuacion, keywords, respuesta_empatica)
 EMOCIONES_27 = [
-    ("Ansiedad", -0.8, ["ansiedad", "ansioso", "ansiosa", "nervioso", "nerviosa", "panico", "pánico", "agobiado", "estres", "estrés", "preocupado", "inquieto", "taquicardia"], "Respira despacio: inhala 4 segundos y exhala 6. No tienes que resolver todo hoy mismo."),
+    ("Ansiedad", -0.8, ["ansiedad", "ansioso", "ansiosa", "nervioso", "nerviosa", "panico", "pánico", "agobiado", "estres", "estrés", "preocupado", "inquieto", "taquicardia", "estresado", "estresada", "estresante", "agobiada", "preocupada", "inquieta", "angustia", "angustiado", "angustiada"], "Respira despacio: inhala 4 segundos y exhala 6. No tienes que resolver todo hoy mismo."),
     ("Miedo", -0.8, ["miedo", "asustado", "asustada", "temor", "terror", "inseguro", "amenaza", "sustos"], "Sentir miedo es una señal de alerta natural. Da un paso pequeño a la vez y apóyate en alguien de confianza."),
-    ("Tristeza", -0.7, ["triste", "tristeza", "deprimido", "llorar", "llorando", "apagado", "desanimado", "vacio", "vacío", "dolor", "pena"], "Es válido sentirte así. Date permiso de ir más despacio hoy y recuerda que no estás solo."),
-    ("Enojo", -0.7, ["enojado", "enojada", "enojo", "coraje", "rabia", "molesto", "frustrado", "harto", "furioso", "ira"], "Tu enojo señala que algo cruzó un límite importante. Haz una pausa antes de responder o decidir."),
+    ("Tristeza", -0.7, ["triste", "tristeza", "deprimido", "llorar", "llorando", "apagado", "desanimado", "vacio", "vacío", "dolor", "pena", "mal", "fatal", "pésimo", "de la chingada", "deprimida", "desanimada", "decaido", "decaida", "lloro", "llore"], "Es válido sentirte así. Date permiso de ir más despacio hoy y recuerda que no estás solo."),
+    ("Enojo", -0.7, ["enojado", "enojada", "enojo", "coraje", "rabia", "molesto", "frustrado", "harto", "furioso", "ira", "molesta", "frustrada", "harta", "furiosa"], "Tu enojo señala que algo cruzó un límite importante. Haz una pausa antes de responder o decidir."),
     ("Impacto", -0.7, ["horror", "impactado", "shock", "espantado", "aterrado", "terrible", "horrible"], "Cuando algo nos sacude fuerte, volver al cuerpo ayuda: toma agua y enfócate en tu respiración."),
     ("Rechazo", -0.6, ["asco", "repulsion", "repulsión", "rechazo", "desagrado", "hartazgo"], "Reconocer lo que te genera rechazo también te ayuda a proteger tus límites y tu bienestar."),
     ("Incomodidad", -0.5, ["incomodo", "incómodo", "verguenza", "vergüenza", "culpa", "culpable", "pena ajena", "torpe"], "Todos cometemos errores o pasamos momentos incómodos; trátate con la misma paciencia que a un amigo."),
     ("Envidia", -0.4, ["envidia", "celos", "comparando", "compararme", "quisiera tener"], "Compararte desgasta tu energía. Usa esa señal para identificar qué meta personal te gustaría construir."),
     ("Aburrimiento", -0.3, ["aburrido", "aburrida", "aburrimiento", "monotonia", "monotonía", "sin nada que hacer", "tedio"], "El aburrimiento es una invitación a cambiar de actividad por 15 minutos y probar algo distinto."),
     ("Confusión", -0.3, ["confundido", "confundida", "confusion", "confusión", "perdido", "no se que hacer", "no sé qué hacer", "duda"], "No tener todas las respuestas hoy es normal; escribe las opciones en papel para aclarar tu mente."),
-    ("Nostalgia", -0.2, ["nostalgia", "nostalgico", "extrano", "extraño", "recuerdos", "antes", "ayer"], "Extrañar etapas o personas habla de lo valioso que fue para ti. Agradece ese recuerdo y vuelve al presente."),
+    ("Nostalgia", -0.2, ["nostalgia", "nostalgico", "extrano", "extraño", "recuerdos"], "Extrañar etapas o personas habla de lo valioso que fue para ti. Agradece ese recuerdo y vuelve al presente."),
     ("Empatía", -0.2, ["empatia", "empatía", "compasion", "compasión", "me duele ver", "solidaridad"], "Tu capacidad de conectar con otros es valiosa; cuida también tus propios límites emocionales."),
     ("Anhelo", 0.1, ["anhelo", "deseo", "quisiera", "ojala", "ojalá", "sueno con", "sueño con"], "Tener anhelos claros te da dirección. Convierte ese deseo en una micro-acción concreta hoy."),
     ("Asombro", 0.4, ["asombro", "asombrado", "sorprendido", "increible", "increíble", "maravillado"], "Mantener la capacidad de asombro mantiene tu mente abierta y receptiva a nuevas ideas."),
@@ -85,15 +91,15 @@ EMOCIONES_27 = [
     ("Alivio", 0.5, ["alivio", "aliviado", "por fin", "ya paso", "ya pasó", "descanso", "respiro"], "Qué bueno que esa carga disminuyó. Aprovecha este respiro para recargar energía."),
     ("Calma", 0.6, ["calma", "calmado", "tranquilo", "tranquila", "paz", "sereno", "relajado"], "Disfruta este estado de serenidad; es una base excelente para tomar buenas decisiones."),
     ("Satisfacción", 0.6, ["satisfecho", "satisfaccion", "satisfacción", "logre", "logré", "cumpli", "cumplí", "orgulloso"], "Reconoce tu propio esfuerzo: cada avance cumplido fortalece tu confianza."),
-    ("Admiración", 0.6, ["admiracion", "admiración", "admiro", "respeto", "ejemplo"], "Admirar cualidades en otros refleja valores que también puedes cultivar en ti."),
+    ("Admiración", 0.6, ["admiracion", "admiración", "admiro"], "Admirar cualidades en otros refleja valores que también puedes cultivar en ti."),
     ("Inspiración", 0.7, ["inspirado", "inspiracion", "inspiración", "embeleso", "creativo", "arte", "musica", "música"], "Aprovecha esta chispa creativa para anotar tus ideas o dar forma a un proyecto."),
     ("Gratitud", 0.7, ["gratitud", "agradecido", "agradecida", "gracias", "afortunado"], "La gratitud entrena tu atención hacia lo que sí funciona en tu vida."),
-    ("Afecto", 0.7, ["afecto", "carino", "cariño", "querer", "quiero mucho", "familia", "amigos", "aprecio"], "Cuidar tus vínculos afectivos es uno de los pilares más sólidos del bienestar emocional."),
+    ("Afecto", 0.7, ["afecto", "carino", "cariño", "querer", "quiero mucho", "aprecio"], "Cuidar tus vínculos afectivos es uno de los pilares más sólidos del bienestar emocional."),
     ("Ilusión", 0.7, ["ilusion", "ilusión", "romance", "enamorado", "enamorada", "pareja", "cita"], "Disfruta esta etapa con autenticidad, comunicación clara y equilibrio personal."),
     ("Diversión", 0.8, ["diversion", "diversión", "divertido", "risa", "riendo", "gracioso", "jugando"], "Reír y disfrutar el momento libera tensión y renueva tu ánimo."),
     ("Motivación", 0.8, ["motivado", "motivacion", "motivación", "pasion", "pasión", "enfocado", "determinado"], "Esa determinación es oro: canalízala ahora mismo en tu tarea más importante."),
     ("Entusiasmo", 0.9, ["entusiasmo", "entusiasmado", "emocionado", "emocionada", "euforia", "genial"], "¡Qué gran impulso! Aprovecha esa energía para dar un paso firme hacia tus metas."),
-    ("Alegría", 0.9, ["feliz", "alegre", "alegria", "alegría", "contento", "contenta", "bien", "excelente", "maravilloso"], "¡Qué gusto leer esto! Guarda este momento como recordatorio de lo bien que puedes sentirte."),
+    ("Alegría", 0.9, ["feliz", "alegre", "alegria", "alegría", "contento", "contenta", "bien", "excelente", "maravilloso", "chido", "chida"], "¡Qué gusto leer esto! Guarda este momento como recordatorio de lo bien que puedes sentirte."),
     ("Neutral", 0.0, [], "Gracias por registrar tu día. La constancia de escribir fortalece tu autoconocimiento.")
 ]
 
@@ -108,12 +114,7 @@ RETOS_RESPALDO = [
 
 
 def analizar_texto_27(texto):
-    t = texto.lower()
-    for emocion, punt, kws, resp in EMOCIONES_27:
-        if any(k in t for k in kws):
-            return emocion, punt, resp
-    return "Neutral", 0.0, EMOCIONES_27[-1][3]
-
+    return emoti_motor.analizar(texto, EMOCIONES_27)
 
 def obtener_reto_sugerido(emocion):
     try:
@@ -151,13 +152,18 @@ def health():
 
 
 @app.route('/api/usuario/resumen', methods=['GET'], strict_slashes=False)
+@requiere_sesion
 def obtener_resumen_usuario_default():
-    return obtener_resumen_usuario('USR_EMMANUEL_01')
+    return obtener_resumen_usuario(g.uid)
 
 
 @app.route('/api/usuario/resumen/<usuario_id>', methods=['GET'], strict_slashes=False)
 @app.route('/api/usuarios/perfil/<usuario_id>', methods=['GET'], strict_slashes=False)
+@requiere_sesion
 def obtener_resumen_usuario(usuario_id):
+    _x = propio(usuario_id)
+    if _x:
+        return _x
     try:
         usuario = db.usuarios.find_one({"_id": usuario_id}) or db.usuarios.find_one({"_id": "USR_EMMANUEL_01"})
         detalles = obtener_detalles(usuario)
@@ -165,7 +171,7 @@ def obtener_resumen_usuario(usuario_id):
         ultimo_log = db.diario_logs.find_one({"usuario_id": usuario_id}, sort=[("fecha", DESCENDING)])
         total_usuario = db.diario_logs.count_documents({"usuario_id": usuario_id})
 
-        racha = a_entero(detalles.get("racha_dias"), total_usuario)
+        racha = emoti_auth.calcular_racha(usuario_id)
         ultima_emocion = str(ultimo_log.get("emocion", "Neutral")) if ultimo_log else "Sin registros"
         ultima_fecha = str(ultimo_log.get("fecha", "--")) if ultimo_log else "--"
 
@@ -180,23 +186,28 @@ def obtener_resumen_usuario(usuario_id):
             "fecha_ultima": ultima_fecha
         }), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return error_interno(e)
 
 
 @app.route('/api/usuario/logros', methods=['GET'], strict_slashes=False)
+@requiere_sesion
 def obtener_logros_usuario_default():
-    return obtener_logros_usuario('USR_EMMANUEL_01')
+    return obtener_logros_usuario(g.uid)
 
 
 @app.route('/api/usuario/logros/<usuario_id>', methods=['GET'], strict_slashes=False)
+@requiere_sesion
 def obtener_logros_usuario(usuario_id):
+    _x = propio(usuario_id)
+    if _x:
+        return _x
     try:
         usuario = db.usuarios.find_one({"_id": usuario_id}) or db.usuarios.find_one({"_id": "USR_EMMANUEL_01"})
         detalles = obtener_detalles(usuario)
         total_logs = db.diario_logs.count_documents({"usuario_id": usuario_id})
 
-        racha = a_entero(detalles.get("racha_dias"), total_logs)
-        nivel = a_entero(detalles.get("nivel"), max(1, (total_logs // 3) + 1))
+        racha = emoti_auth.calcular_racha(usuario_id)
+        nivel = max(1, (total_logs // 3) + 1)
         metas_activas = db.metas_habitos.count_documents({"usuario_id": usuario_id, "estado": "activo"})
 
         return jsonify({
@@ -215,7 +226,7 @@ def obtener_logros_usuario(usuario_id):
             ]
         }), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return error_interno(e)
 
 
 @app.route('/api/relax/frases', methods=['GET'], strict_slashes=False)
@@ -240,13 +251,17 @@ def obtener_frases_relax():
 
 
 @app.route('/api/diario/reporte_psicologica', methods=['GET'], strict_slashes=False)
+@requiere_rol("psicologa")
 def obtener_reporte_psicologica_default():
     return obtener_reporte_psicologica('USR_EMMANUEL_01')
 
 
 @app.route('/api/diario/reporte_psicologica/<usuario_id>', methods=['GET'], strict_slashes=False)
 @app.route('/api/psicologa/reporte/<usuario_id>', methods=['GET'], strict_slashes=False)
+@requiere_rol("psicologa")
 def obtener_reporte_psicologica(usuario_id):
+    if not emoti_auth.estudiante_visible(usuario_id):
+        return jsonify({"error": "Este estudiante no ha compartido su información contigo."}), 403
     try:
         logs_recientes = list(db.diario_logs.find({"usuario_id": usuario_id}).sort("fecha", DESCENDING).limit(14))
         total_entradas = len(logs_recientes)
@@ -292,13 +307,14 @@ def obtener_reporte_psicologica(usuario_id):
             "recomendacion": "💡 Sugerencia: Revisar el estudio mensual y evaluar la precisión de las recomendaciones."
         }), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return error_interno(e)
 
 
 @app.route('/api/diario/compartir/<log_id>', methods=['POST'], strict_slashes=False)
+@requiere_sesion
 def compartir_entrada_psicologa(log_id):
     data = request.json or {}
-    usuario_id = data.get("usuario_id")
+    usuario_id = g.uid
     autorizar = bool(data.get("compartir", True))
 
     if not usuario_id:
@@ -313,23 +329,29 @@ def compartir_entrada_psicologa(log_id):
             return jsonify({"error": "Entrada no encontrada o no pertenece al usuario."}), 404
         return jsonify({"mensaje": "Privacidad actualizada.", "compartido_psicologa": autorizar}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return error_interno(e)
 
 
 @app.route('/api/diario/historial', methods=['GET'], strict_slashes=False)
+@requiere_sesion
 def obtener_historial_default():
-    return obtener_historial('USR_EMMANUEL_01')
+    return obtener_historial(g.uid)
 
 
 @app.route('/api/diario/historial/<usuario_id>', methods=['GET'], strict_slashes=False)
+@requiere_sesion
 def obtener_historial(usuario_id):
+    _x = propio(usuario_id)
+    if _x:
+        return _x
     try:
-        logs = list(db.diario_logs.find({"usuario_id": usuario_id}).sort("fecha", DESCENDING))
+        logs = list(db.diario_logs.find({"usuario_id": usuario_id}).sort("fecha", DESCENDING).limit(500))
         historial_lista = []
         for log in logs:
             historial_lista.append({
                 "id": str(log.get("_id", "1")),
                 "fecha": str(log.get("fecha", "")),
+                "dia": str(log.get("fecha", ""))[:10],
                 "emocion": str(log.get("emocion", "")),
                 "estado_animo": str(log.get("emocion", "")),
                 "texto_original": str(log.get("texto_original", "")),
@@ -342,133 +364,63 @@ def obtener_historial(usuario_id):
 
         return jsonify({"entradas": historial_lista}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/login', methods=['POST'], strict_slashes=False)
-def login():
-    data = request.json or {}
-    usuario_input = str(data.get("usuario") or data.get("correo") or data.get("matricula", "")).strip()
-    password_input = str(data.get("password") or data.get("contrasena") or "").strip()
-
-    if not usuario_input:
-        return jsonify({"error": "Ingresa tu correo, matrícula o ID."}), 400
-
-    try:
-        patron = {"$regex": f"^\\s*{re.escape(usuario_input)}\\s*$", "$options": "i"}
-        user_db = db.usuarios.find_one({
-            "$or": [
-                {"correo": patron},
-                {"detalles_estudiante.matricula": patron},
-                {"_id": patron}
-            ]
-        })
-
-        if not user_db:
-            return jsonify({"error": "Usuario no encontrado."}), 401
-
-        if user_db.get("activo") is False:
-            return jsonify({"error": "Esta cuenta se encuentra desactivada."}), 403
-
-        password_hash = user_db.get("password_hash")
-        password_inicializada = False
-
-        if password_hash:
-            if not password_input or not check_password_hash(password_hash, password_input):
-                return jsonify({"error": "Contraseña incorrecta."}), 401
-        else:
-            if password_input:
-                if len(password_input) < 4:
-                    return jsonify({"error": "La contraseña debe tener al menos 4 caracteres."}), 400
-                db.usuarios.update_one(
-                    {"_id": user_db["_id"]},
-                    {"$set": {"password_hash": generate_password_hash(password_input)}}
-                )
-                password_inicializada = True
-
-        token = secrets.token_hex(24)
-        return jsonify({
-            "mensaje": "Login exitoso",
-            "password_inicializada": password_inicializada,
-            "token": token,
-            "id": str(user_db["_id"]).strip(),
-            "usuario_id": str(user_db["_id"]).strip(),
-            "rol": str(user_db.get("rol", "estudiante")).strip(),
-            "Rol": str(user_db.get("rol", "estudiante")).strip(),
-            "nombre": str(user_db.get("nombre_completo", "Usuario")).strip(),
-            "nombre_completo": str(user_db.get("nombre_completo", "Usuario")).strip()
-        }), 200
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/usuario/cambiar_password', methods=['POST'], strict_slashes=False)
-def cambiar_password():
-    data = request.json or {}
-    usuario_id = str(data.get("usuario_id", "")).strip()
-    actual = str(data.get("actual", "")).strip()
-    nueva = str(data.get("nueva", "")).strip()
-
-    if not usuario_id or len(nueva) < 4:
-        return jsonify({"error": "La nueva contraseña debe tener al menos 4 caracteres."}), 400
-
-    try:
-        user_db = db.usuarios.find_one({"_id": usuario_id})
-        if not user_db:
-            return jsonify({"error": "Usuario no encontrado."}), 404
-
-        if user_db.get("password_hash") and not check_password_hash(user_db["password_hash"], actual):
-            return jsonify({"error": "La contraseña actual no coincide."}), 401
-
-        db.usuarios.update_one({"_id": usuario_id}, {"$set": {"password_hash": generate_password_hash(nueva)}})
-        return jsonify({"mensaje": "Contraseña actualizada correctamente."}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return error_interno(e)
 
 
 @app.route('/api/diario/registrar', methods=['POST'], strict_slashes=False)
 @app.route('/api/diario/guardar', methods=['POST'], strict_slashes=False)
+@requiere_sesion
 def registrar_emocion():
-    data = request.json or {}
-    id_usuario = data.get("id_usuario") or data.get("usuario_id") or "USR_EMMANUEL_01"
-    texto = str(data.get("texto", "")).strip()
+    data = request.get_json(silent=True) or {}
+    texto = emoti_auth.limpiar(data.get("texto"), 5000)
     if not texto:
-        return jsonify({"error": "El texto no puede estar vacío."}), 400
+        return jsonify({"error": "Escribe algo antes de guardar."}), 400
+    if len(texto) > 1000:
+        return jsonify({"error": "Tu entrada es muy larga (máximo 1000 caracteres)."}), 400
+    cid = str(data.get("cid") or "")
+    if not re.fullmatch(r"[A-Za-z0-9_-]{8,64}", cid):
+        cid = ""
 
-    emocion_detectada, puntuacion, respuesta_ia = analizar_texto_27(texto)
-    reto_sugerido = obtener_reto_sugerido(emocion_detectada)
+    def respuesta(log, codigo, duplicado=False):
+        out = {"mensaje": "Guardado con éxito", "log_id": str(log["_id"]), "emocion": log.get("emocion"),
+               "mensaje_empatico": log.get("respuesta_enviada"), "compartido_psicologa": bool(log.get("compartido_psicologa")),
+               "reto_sugerido": log.get("reto_sugerido"), "duplicado": duplicado}
+        if log.get("senal_riesgo"):
+            out["ayuda"] = emoti_motor.AYUDA
+        return jsonify(out), codigo
 
-    nuevo_log = {
-        "usuario_id": id_usuario,
-        "fecha": ahora_mx().strftime("%Y-%m-%d %H:%M:%S"),
-        "texto_original": texto,
-        "emocion": emocion_detectada,
-        "puntuacion": puntuacion,
-        "respuesta_enviada": respuesta_ia,
-        "reto_sugerido": reto_sugerido,
-        "compartido_psicologa": False,
-        "precision_psicologa": None
+    if cid:
+        previo = db.diario_logs.find_one({"usuario_id": g.uid, "cid": cid})
+        if previo:
+            return respuesta(previo, 200, True)  # reintento o doble clic: no se duplica
+    emocion, puntuacion, resp = analizar_texto_27(texto)
+    riesgo = emoti_motor.detectar_riesgo(texto)
+    if riesgo:
+        resp = emoti_motor.RESPUESTA_RIESGO
+    ahora = ahora_mx()
+    log = {
+        "usuario_id": g.uid, "fecha": ahora.strftime("%Y-%m-%d %H:%M:%S"), "dia": ahora.strftime("%Y-%m-%d"),
+        "ts": datetime.now(timezone.utc), "texto_original": texto, "emocion": emocion, "puntuacion": puntuacion,
+        "respuesta_enviada": resp, "reto_sugerido": obtener_reto_sugerido(emocion), "compartido_psicologa": False,
+        "precision_psicologa": None, "senal_riesgo": riesgo
     }
-
-    log_id = ""
+    if cid:
+        log["cid"] = cid
     try:
-        res = db.diario_logs.insert_one(nuevo_log)
-        log_id = str(res.inserted_id)
+        db.diario_logs.insert_one(log)
+    except DuplicateKeyError:
+        ex = db.diario_logs.find_one({"usuario_id": g.uid, "cid": cid})
+        if ex:
+            return respuesta(ex, 200, True)
+        return jsonify({"error": "No pudimos guardar tu entrada. Inténtalo de nuevo."}), 503
     except Exception as e:
-        print(f"❌ Error insertando log: {e}")
-
-    return jsonify({
-        "mensaje": "Guardado con éxito",
-        "log_id": log_id,
-        "emocion": emocion_detectada,
-        "mensaje_empatico": respuesta_ia,
-        "compartido_psicologa": False,
-        "reto_sugerido": reto_sugerido
-    }), 201
+        print("❌ no se pudo guardar una entrada:", type(e).__name__)
+        return jsonify({"error": "No pudimos guardar tu entrada. Inténtalo de nuevo."}), 503
+    return respuesta(log, 201)
 
 
 @app.route('/api/habitos/catalogo', methods=['GET'], strict_slashes=False)
+@requiere_sesion
 def obtener_catalogo_habitos():
     emocion = request.args.get("emocion")
     try:
@@ -491,15 +443,20 @@ def obtener_catalogo_habitos():
             catalogo = [r for r in RETOS_RESPALDO if not emocion or r["emocion_trigger"] == emocion]
         return jsonify({"catalogo": catalogo}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return error_interno(e)
 
 
 @app.route('/api/habitos/<usuario_id>', methods=['GET'], strict_slashes=False)
+@requiere_sesion
 def obtener_metas_habitos(usuario_id):
+    _x = propio(usuario_id)
+    if _x:
+        return _x
     mes_actual = ahora_mx().strftime("%Y-%m")
     hoy_str = ahora_mx().strftime("%Y-%m-%d")
     try:
-        if db.metas_habitos.count_documents({"usuario_id": usuario_id}) == 0:
+        marca = db.usuarios.update_one({"_id": usuario_id, "habitos_iniciados": {"$ne": True}}, {"$set": {"habitos_iniciados": True}})
+        if marca.modified_count == 1 and db.metas_habitos.count_documents({"usuario_id": usuario_id}) == 0:
             iniciales = []
             for tipo in ("construir", "mejorar", "soltar"):
                 cand = list(db.retos_catalogo.find({"tipo": tipo, "activo": {"$ne": False}}))
@@ -603,15 +560,16 @@ def obtener_metas_habitos(usuario_id):
             }
         }), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return error_interno(e)
 
 
 @app.route('/api/habitos/asignar', methods=['POST'], strict_slashes=False)
+@requiere_sesion
 def asignar_meta_habito():
     data = request.json or {}
-    usuario_id = data.get("usuario_id")
-    titulo = str(data.get("titulo", "")).strip()
-    micro_accion = str(data.get("micro_accion", "")).strip()
+    usuario_id = g.uid
+    titulo = emoti_auth.limpiar(data.get("titulo"), 80)
+    micro_accion = emoti_auth.limpiar(data.get("micro_accion"), 160)
 
     if not usuario_id or not titulo or not micro_accion:
         return jsonify({"error": "Faltan datos obligatorios (usuario_id, titulo, micro_accion)."}), 400
@@ -625,7 +583,7 @@ def asignar_meta_habito():
         nueva_meta = {
             "usuario_id": usuario_id,
             "reto_origen_id": data.get("reto_id"),
-            "tipo": data.get("tipo", "construir"),
+            "tipo": data.get("tipo") if data.get("tipo") in ("construir", "mejorar", "soltar") else "construir",
             "titulo": titulo,
             "micro_accion": micro_accion,
             "mes": mes_actual,
@@ -637,52 +595,49 @@ def asignar_meta_habito():
         res = db.metas_habitos.insert_one(nueva_meta)
         return jsonify({"mensaje": "Meta de hábito guardada en tu cuenta", "id": str(res.inserted_id)}), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return error_interno(e)
 
 
 @app.route('/api/habitos/repetir_mes_anterior', methods=['POST'], strict_slashes=False)
+@requiere_sesion
 def repetir_metas_mes_anterior():
-    data = request.json or {}
-    usuario_id = data.get("usuario_id")
-    if not usuario_id:
-        return jsonify({"error": "Falta usuario_id"}), 400
-
     mes_actual = ahora_mx().strftime("%Y-%m")
     try:
-        previas = list(db.metas_habitos.find({
-            "usuario_id": usuario_id,
-            "mes": {"$ne": mes_actual},
-            "estado": "activo"
-        }).sort("mes", DESCENDING).limit(5))
-
-        if not previas:
+        previo = db.metas_habitos.find_one({"usuario_id": g.uid, "mes": {"$lt": mes_actual}, "estado": "activo"}, sort=[("mes", DESCENDING)])
+        if not previo:
             return jsonify({"error": "No se encontraron metas previas."}), 404
-
+        origen = list(db.metas_habitos.find({"usuario_id": g.uid, "mes": previo["mes"], "estado": "activo"}).limit(5))
+        actuales = list(db.metas_habitos.find({"usuario_id": g.uid, "mes": mes_actual, "estado": "activo"}))
+        ya = {str(m.get("titulo", "")).strip().lower() for m in actuales}
         creadas = 0
-        for p in previas:
-            db.metas_habitos.insert_one({
-                "usuario_id": usuario_id,
-                "tipo": p.get("tipo", "construir"),
-                "titulo": p.get("titulo", ""),
-                "micro_accion": p.get("micro_accion", ""),
-                "mes": mes_actual,
-                "meta_dias": a_entero(p.get("meta_dias"), 20),
-                "dias_cumplidos": [],
-                "estado": "activo",
-                "fecha_creacion": ahora_mx().strftime("%Y-%m-%d %H:%M:%S")
-            })
-            creadas += 1
+        for p in origen:
+            titulo = str(p.get("titulo", "")).strip()
+            if len(actuales) + creadas >= 5:
+                break
+            if titulo.lower() in ya:
+                continue
+            try:
+                db.metas_habitos.insert_one({
+                    "usuario_id": g.uid, "tipo": p.get("tipo", "construir"), "titulo": titulo,
+                    "micro_accion": p.get("micro_accion", ""), "mes": mes_actual, "meta_dias": a_entero(p.get("meta_dias"), 20),
+                    "dias_cumplidos": [], "estado": "activo", "fecha_creacion": ahora_mx().strftime("%Y-%m-%d %H:%M:%S")
+                })
+                ya.add(titulo.lower())
+                creadas += 1
+            except DuplicateKeyError:
+                pass
         return jsonify({"mensaje": f"Se repitieron {creadas} metas para este mes."}), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return error_interno(e)
 
 
 @app.route('/api/habitos/checkin', methods=['POST'], strict_slashes=False)
+@requiere_sesion
 def checkin_meta_habito():
     data = request.json or {}
     meta_id = data.get("meta_id")
-    usuario_id = data.get("usuario_id")
-    fecha_dia = str(data.get("fecha") or ahora_mx().strftime("%Y-%m-%d"))[:10]
+    usuario_id = g.uid
+    fecha_dia = emoti_auth.dia_valido(data.get("fecha"))
 
     if not meta_id or not usuario_id:
         return jsonify({"error": "Se requiere meta_id y usuario_id."}), 400
@@ -702,16 +657,19 @@ def checkin_meta_habito():
 
         return jsonify({"mensaje": "Seguimiento actualizado", "hecho": hecho, "fecha": fecha_dia}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return error_interno(e)
 
 
 @app.route('/api/habitos/<meta_id>', methods=['DELETE'], strict_slashes=False)
+@requiere_sesion
 def eliminar_meta_habito(meta_id):
     try:
-        db.metas_habitos.update_one({"_id": ObjectId(meta_id)}, {"$set": {"estado": "eliminada"}})
+        res = db.metas_habitos.update_one({"_id": ObjectId(meta_id), "usuario_id": g.uid}, {"$set": {"estado": "eliminada"}})
+        if res.matched_count == 0:
+            return jsonify({"error": "Meta no encontrada."}), 404
         return jsonify({"mensaje": "Meta eliminada"}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return error_interno(e)
 
 
 @app.route('/api/usuarios/configuracion', methods=['GET'], strict_slashes=False)
@@ -721,9 +679,10 @@ def obtener_configuracion_tema(id_usuario='USR_EMMANUEL_01'):
 
 
 @app.route('/api/psicologa/estudiantes', methods=['GET'], strict_slashes=False)
+@requiere_rol("psicologa")
 def obtener_estudiantes():
     try:
-        estudiantes_db = list(db.usuarios.find({"rol": "estudiante"}))
+        estudiantes_db = list(db.usuarios.find({"rol": "estudiante", **emoti_auth.FILTRO_VISIBLES}))
         lista_estudiantes = []
         for est in estudiantes_db:
             id_est = str(est.get("_id", "")).strip()
@@ -751,11 +710,14 @@ def obtener_estudiantes():
             "precision_global": calcular_precision_global()
         }), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return error_interno(e)
 
 
 @app.route('/api/psicologa/estudio/<usuario_id>', methods=['GET'], strict_slashes=False)
+@requiere_rol("psicologa")
 def obtener_estudio_mensual_estudiante(usuario_id):
+    if not emoti_auth.estudiante_visible(usuario_id):
+        return jsonify({"error": "Este estudiante no ha compartido su información contigo."}), 403
     mes_solicitado = request.args.get("mes")
     try:
         est = db.usuarios.find_one({"_id": usuario_id})
@@ -901,16 +863,17 @@ def obtener_estudio_mensual_estudiante(usuario_id):
             "notas_clinicas": notas_clinicas
         }), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return error_interno(e)
 
 
 @app.route('/api/psicologa/evaluar_precision', methods=['POST'], strict_slashes=False)
+@requiere_rol("psicologa")
 def evaluar_precision_recomendacion():
     data = request.json or {}
     log_id = data.get("log_id")
     precision = data.get("precision")
     comentario = str(data.get("comentario", "")).strip()
-    psicologa_id = str(data.get("psicologa_id", "USR_DULCE_02")).strip()
+    psicologa_id = g.uid
 
     if not log_id or precision not in ("precisa", "no_precisa"):
         return jsonify({"error": "Datos inválidos para evaluar precisión."}), 400
@@ -933,20 +896,23 @@ def evaluar_precision_recomendacion():
             "precision_global": calcular_precision_global()
         }), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return error_interno(e)
 
 
 @app.route('/api/psicologa/notas', methods=['POST'], strict_slashes=False)
+@requiere_rol("psicologa")
 def guardar_nota_psicologa():
     data = request.json or {}
     usuario_id = str(data.get("usuario_id", "")).strip()
     texto_nota = str(data.get("nota", "")).strip()
-    psicologa_id = str(data.get("psicologa_id", "USR_DULCE_02")).strip()
-    autor = str(data.get("autor", "Lic. Dulce Contreras")).strip()
+    psicologa_id = g.uid
+    autor = emoti_auth.nombre_de(g.uid)
 
     if not usuario_id or not texto_nota:
         return jsonify({"error": "Escribe una observación antes de guardar."}), 400
 
+    if not emoti_auth.estudiante_visible(usuario_id):
+        return jsonify({"error": "Este estudiante no ha compartido su información contigo."}), 403
     try:
         doc = {
             "estudiante_id": usuario_id,
@@ -960,11 +926,12 @@ def guardar_nota_psicologa():
         res = db["notas_psicológicas"].insert_one(doc)
         return jsonify({"mensaje": "Nota clínica guardada en Atlas.", "id": str(res.inserted_id)}), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return error_interno(e)
 
 
 @app.route('/api/psicologa/registrar_estudiante', methods=['POST'], strict_slashes=False)
 @app.route('/api/usuarios/registrar', methods=['POST'], strict_slashes=False)
+@requiere_rol("psicologa")
 def registrar_usuario():
     data = request.json or {}
     nombre = str(data.get("nombre_completo", "")).strip()
@@ -975,18 +942,26 @@ def registrar_usuario():
 
     if not nombre or not correo:
         return jsonify({"error": "Nombre completo y correo son obligatorios."}), 400
+    if not emoti_auth.RE_CORREO.match(correo):
+        return jsonify({"error": "El correo no es válido."}), 400
+    if password_plana and emoti_auth.validar_password(password_plana):
+        return jsonify({"error": emoti_auth.validar_password(password_plana)}), 400
 
     try:
         existente = db.usuarios.find_one({"correo": correo})
         if existente:
             return jsonify({"error": "Ya existe un usuario registrado con ese correo."}), 400
 
-        nuevo_id = str(data.get("_id") or f"USR_{matricula or secrets.token_hex(3).upper()}").strip()
+        nuevo_id = f"USR_{matricula or secrets.token_hex(3).upper()}".strip()
         nuevo_doc = {
             "_id": nuevo_id,
             "nombre_completo": nombre,
             "correo": correo,
-            "rol": data.get("rol", "estudiante"),
+            "rol": "estudiante",
+            "canalizado": True,
+            "verificado": True,
+            "creado_por": g.uid,
+            "consentimientos": {"compartir_con_psicologa": True, "origen": "alta_por_psicologa"},
             "activo": True,
             "fecha_registro": ahora_mx().strftime("%Y-%m-%d %H:%M:%S"),
             "detalles_estudiante": {
@@ -1002,7 +977,7 @@ def registrar_usuario():
         db.usuarios.insert_one(nuevo_doc)
         return jsonify({"mensaje": f"Estudiante '{nombre}' registrado con éxito.", "id": nuevo_id}), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return error_interno(e)
 
 
 if __name__ == '__main__':
