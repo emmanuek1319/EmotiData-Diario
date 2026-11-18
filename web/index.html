@@ -1,1984 +1,265 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>EmotiData · Tu diario emocional</title>
-  <link rel="icon"
-    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='44' fill='%23e8772e'/%3E%3Ccircle cx='50' cy='50' r='24' fill='%23fff3d6'/%3E%3C/svg%3E">
-  <style>
-    :root {
-      --bg: #f6efe6;
-      --card: #fffaf3;
-      --ink: #1f2a44;
-      --mut: #6b6f80;
-      --acc: #e8772e;
-      --bt: #1f1a10;
-      --line: rgba(31, 42, 68, .15)
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0
-    }
-
-    [hidden] {
-      display: none !important
-    }
-
-    body {
-      min-height: 100vh;
-      font: 16px/1.6 system-ui, "Segoe UI", sans-serif;
-      color: var(--ink);
-      background-color: var(--bg);
-      background-image: var(--bgi, none);
-      background-attachment: fixed;
-      transition: background-color 1.2s, color 1.2s
-    }
-
-    body::before {
-      content: "";
-      position: fixed;
-      right: -140px;
-      top: -140px;
-      width: 440px;
-      height: 440px;
-      border-radius: 50%;
-      background: var(--acc);
-      opacity: .13;
-      pointer-events: none;
-      transition: background 1.2s
-    }
-
-    h1,
-    h2,
-    .logo,
-    .stat b {
-      font-family: Georgia, "Iowan Old Style", serif;
-      font-weight: 600
-    }
-
-    .wrap {
-      position: relative;
-      z-index: 1;
-      max-width: 820px;
-      margin: 0 auto;
-      padding: 28px 18px 70px
-    }
-
-    .logo {
-      font-size: 1.8rem
-    }
-
-    .card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 22px;
-      padding: 26px;
-      box-shadow: 0 3px 0 var(--line);
-      transition: background 1.2s, border-color 1.2s
-    }
-
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 18px
-    }
-
-    nav {
-      display: flex;
-      gap: 4px 18px;
-      flex-wrap: wrap;
-      margin-bottom: 20px
-    }
-
-    nav button {
-      background: none;
-      border: 0;
-      border-bottom: 2px solid transparent;
-      padding: 6px 2px;
-      color: var(--mut);
-      font: inherit;
-      cursor: pointer
-    }
-
-    nav button.on {
-      color: var(--ink);
-      border-color: var(--acc)
-    }
-
-    .btn {
-      background: var(--acc);
-      color: var(--bt);
-      border: 0;
-      padding: 12px 24px;
-      border-radius: 99px;
-      font: inherit;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 1.2s
-    }
-
-    .btn:disabled {
-      opacity: .6;
-      cursor: wait
-    }
-
-    .ghost {
-      background: none;
-      border: 1px solid var(--line);
-      color: var(--ink);
-      padding: 6px 14px;
-      border-radius: 99px;
-      font: inherit;
-      cursor: pointer
-    }
-
-    input,
-    textarea,
-    select {
-      width: 100%;
-      background: transparent;
-      color: inherit;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 12px 14px;
-      font: inherit
-    }
-
-    select {
-      width: auto;
-      padding: 6px 10px;
-      border-radius: 99px;
-      background: var(--card)
-    }
-
-    option,
-    optgroup {
-      color: #1f2a44;
-      background: #fff
-    }
-
-    textarea {
-      min-height: 150px;
-      resize: vertical;
-      line-height: 1.6
-    }
-
-    input:focus,
-    textarea:focus,
-    select:focus,
-    button:focus-visible {
-      outline: 2px solid var(--acc);
-      outline-offset: 2px
-    }
-
-    form {
-      display: grid;
-      gap: 14px;
-      margin-top: 18px
-    }
-
-    h2 {
-      font-size: 1.4rem;
-      margin-bottom: 6px
-    }
-
-    .mut,
-    small {
-      color: var(--mut)
-    }
-
-    .err {
-      color: #c0392b
-    }
-
-    .okmsg {
-      color: #2e8b57
-    }
-
-    #login {
-      position: relative;
-      z-index: 1;
-      max-width: 430px;
-      margin: 11vh auto 0
-    }
-
-    #fondo {
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      pointer-events: none;
-      background-size: cover;
-      background-position: center bottom;
-      background-repeat: no-repeat;
-      transition: opacity 1s
-    }
-
-    #estado {
-      position: fixed;
-      left: 12px;
-      bottom: 12px;
-      z-index: 5;
-      font-size: .78rem;
-      color: var(--mut);
-      background: var(--card);
-      border: 1px solid var(--line);
-      padding: 4px 12px;
-      border-radius: 99px
-    }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-      gap: 14px;
-      margin-top: 16px
-    }
-
-    .stat {
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 16px
-    }
-
-    .stat b {
-      display: block;
-      font-size: 1.5rem
-    }
-
-    .reply {
-      margin-top: 20px;
-      padding: 16px 18px;
-      border-left: 6px solid var(--acc);
-      border-radius: 6px 16px 16px 6px;
-      background: rgba(127, 127, 127, .08);
-      display: grid;
-      gap: 10px
-    }
-
-    .reply b {
-      font-family: Georgia, serif;
-      font-size: 1.2rem
-    }
-
-    .dot {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      flex: none;
-      margin-top: 7px
-    }
-
-    .item {
-      display: flex;
-      gap: 12px;
-      padding: 14px 0;
-      border-top: 1px solid var(--line)
-    }
-
-    .mesGrid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 6px;
-      margin: 16px 0 10px
-    }
-
-    .dia {
-      aspect-ratio: 1;
-      border-radius: 10px;
-      border: 1px dashed var(--line);
-      font-size: .72rem;
-      padding: 4px 6px;
-      color: var(--mut)
-    }
-
-    .dia.on {
-      border: 0;
-      color: #fff;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, .4)
-    }
-
-    #leyenda {
-      display: flex;
-      gap: 6px 16px;
-      flex-wrap: wrap;
-      font-size: .82rem;
-      color: var(--mut);
-      margin-bottom: 10px
-    }
-
-    #leyenda .dot {
-      width: 10px;
-      height: 10px;
-      margin: 0 6px 0 0
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-      gap: 12px;
-      margin: 14px 0
-    }
-
-    .medal {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding: 16px;
-      border-radius: 16px;
-      border: 1px solid var(--acc)
-    }
-
-    .medal span {
-      font-size: 1.7rem
-    }
-
-    .medal.lock {
-      opacity: .4;
-      filter: grayscale(1);
-      border-color: var(--line)
-    }
-
-    #frase {
-      min-height: 100px;
-      font: italic 1.3rem/1.5 Georgia, serif;
-      text-align: center
-    }
-
-    #frase small {
-      display: block;
-      margin-top: 8px;
-      font: .95rem system-ui
-    }
-
-    .resp {
-      width: 140px;
-      height: 140px;
-      margin: 22px auto;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      font-weight: 600;
-      color: var(--bt);
-      background: var(--acc);
-      opacity: .85;
-      animation: resp 8s ease-in-out infinite;
-      transition: background 1.2s
-    }
-
-    @keyframes resp {
-
-      0%,
-      100% {
-        transform: scale(.7)
-      }
-
-      50% {
-        transform: scale(1.1)
-      }
-    }
-
-    .skel {
-      height: 64px;
-      border-radius: 14px;
-      background: rgba(127, 127, 127, .15);
-      animation: sk 1.2s ease-in-out infinite alternate
-    }
-
-    @keyframes sk {
-      to {
-        opacity: .4
-      }
-    }
-
-    #chat {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      max-height: 48vh;
-      overflow: auto;
-      margin: 14px 0
-    }
-
-    .msg {
-      max-width: 88%;
-      padding: 10px 14px;
-      border-radius: 16px;
-      white-space: pre-wrap;
-      line-height: 1.5
-    }
-
-    .msg.bot {
-      background: rgba(127, 127, 127, .14);
-      border-bottom-left-radius: 4px
-    }
-
-    .msg.yo {
-      align-self: flex-end;
-      background: var(--acc);
-      color: var(--bt);
-      border-bottom-right-radius: 4px
-    }
-
-    .msg.sos {
-      border: 1px solid var(--acc)
-    }
-
-    #chips {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 12px
-    }
-
-    .chip {
-      background: none;
-      border: 1px solid var(--line);
-      color: var(--ink);
-      padding: 6px 12px;
-      border-radius: 99px;
-      font-size: .85rem;
-      font-family: inherit;
-      cursor: pointer
-    }
-
-    @media (prefers-reduced-motion:reduce) {
-      * {
-        animation: none !important;
-        transition: none !important
-      }
-    }
-
-    /* ===== Adaptación a cualquier pantalla y lectura cómoda ===== */
-    :root {
-      --fb: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      --fh: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
-      --zoomT: 1;
-      --ls: 0
-    }
-
-    html {
-      font-size: calc(clamp(100%, .92rem + .35vw, 125%) * var(--zoomT));
-      -webkit-text-size-adjust: 100%
-    }
-
-    body {
-      font-family: var(--fb);
-      font-size: 1rem;
-      line-height: 1.65;
-      letter-spacing: var(--ls);
-      min-height: 100dvh
-    }
-
-    h1,
-    h2,
-    .logo,
-    .stat b,
-    .reply b,
-    #frase {
-      font-family: var(--fh)
-    }
-
-    .logo {
-      font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2.1rem)
-    }
-
-    h2 {
-      font-size: clamp(1.35rem, 1.15rem + .8vw, 1.8rem);
-      line-height: 1.25
-    }
-
-    .wrap {
-      padding: clamp(16px, 4vw, 32px) clamp(14px, 4vw, 24px) calc(80px + env(safe-area-inset-bottom))
-    }
-
-    .card {
-      padding: clamp(18px, 4.5vw, 30px)
-    }
-
-    p,
-    small,
-    label {
-      max-width: 68ch
-    }
-
-    nav {
-      gap: 0 clamp(10px, 3vw, 22px)
-    }
-
-    nav button {
-      min-height: 44px;
-      font-size: 1rem
-    }
-
-    .btn,
-    .ghost,
-    .chip {
-      min-height: 44px
-    }
-
-    .btn {
-      font-size: 1rem
-    }
-
-    input,
-    textarea,
-    select {
-      font-size: max(16px, 1rem)
-    }
-
-    small,
-    #leyenda {
-      font-size: .9rem
-    }
-
-    .dia {
-      font-size: .8rem
-    }
-
-    .chip {
-      font-size: .95rem;
-      padding: 8px 14px
-    }
-
-    .stat b {
-      font-size: clamp(1.3rem, 1.1rem + .8vw, 1.7rem)
-    }
-
-    #frase {
-      font-size: clamp(1.15rem, 1rem + .8vw, 1.5rem)
-    }
-
-    header>div:last-child {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap
-    }
-
-    dialog {
-      margin: auto;
-      border: 1px solid var(--line);
-      border-radius: 22px;
-      background: var(--bg);
-      color: var(--ink);
-      font-family: var(--fb);
-      padding: clamp(18px, 4vw, 28px);
-      width: min(92vw, 540px);
-      max-height: 88dvh;
-      overflow: auto
-    }
-
-    dialog::backdrop {
-      background: rgba(0, 0, 0, .6)
-    }
-
-    dialog form {
-      margin-top: 0
-    }
-
-    dialog h2 {
-      margin: 0
-    }
-
-    dialog select {
-      width: 100%
-    }
-
-    dialog label {
-      display: grid;
-      gap: 6px;
-      color: var(--mut)
-    }
-
-    .tam {
-      display: flex;
-      gap: 8px
-    }
-
-    .tam button {
-      flex: 1;
-      padding: 6px
-    }
-
-    .tam button.on {
-      background: var(--acc);
-      color: var(--bt);
-      border-color: transparent
-    }
-
-    .bv {
-      text-align: center;
-      display: grid;
-      gap: 12px
-    }
-
-    .bv h2,
-    .bv h3,
-    .bv p,
-    .bv .ayuda {
-      margin-inline: auto;
-      width: 100%
-    }
-
-    .bv h3 {
-      font-family: var(--fh);
-      font-size: 1.15rem;
-      margin: 6px 0 0
-    }
-
-    .bv .ayuda {
-      border: 1px solid var(--acc);
-      border-left: 4px solid var(--acc);
-      padding: 12px 14px;
-      border-radius: 12px;
-      background: rgba(127, 127, 127, .1)
-    }
-
-    @media (max-width:480px) {
-      .mesGrid {
-        gap: 4px
-      }
-
-      .dia {
-        padding: 3px 4px
-      }
-
-      .msg {
-        max-width: 94%
-      }
-    }
-
-    /* ===== Atrévete al cambio ===== */
-    .meta {
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 16px;
-      margin: 14px 0;
-      display: grid;
-      gap: 10px
-    }
-
-    .mh {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap
-    }
-
-    .tag {
-      font-size: .82rem;
-      padding: 2px 12px;
-      border-radius: 99px;
-      border: 1px solid var(--acc)
-    }
-
-    .mt {
-      font-family: var(--fh);
-      font-size: 1.2rem;
-      margin: 0
-    }
-
-    .btn.ok {
-      background: transparent;
-      color: var(--ink);
-      border: 2px solid var(--acc)
-    }
-
-    .barra {
-      height: 10px;
-      border-radius: 99px;
-      background: rgba(127, 127, 127, .22);
-      overflow: hidden
-    }
-
-    .barra i {
-      display: block;
-      height: 100%;
-      background: var(--acc);
-      transition: width .5s
-    }
-
-    .pts {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px
-    }
-
-    .pts i {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: rgba(127, 127, 127, .28)
-    }
-
-    .pts i.on {
-      background: var(--acc)
-    }
-
-    .pts i.hoy {
-      outline: 2px solid var(--ink);
-      outline-offset: 1px
-    }
-
-    .q {
-      min-height: 36px;
-      padding: 4px 12px;
-      font-size: .85rem
-    }
-
-    .chip.sug {
-      border-color: var(--acc);
-      font-weight: 600
-    }
-
-    h3.sec {
-      font-family: var(--fh);
-      font-size: 1.15rem;
-      margin: 24px 0 8px
-    }
-
-    #cNueva summary,
-    details summary {
-      cursor: pointer;
-      min-height: 44px;
-      display: flex;
-      align-items: center;
-      font-weight: 600
-    }
-
-    #fCambio label,
-    #fRegEst label {
-      display: grid;
-      gap: 6px;
-      color: var(--mut)
-    }
-
-    /* ===== Panel Psicología / Tutoría ===== */
-    .estCard {
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 14px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-      cursor: pointer;
-      transition: border-color .3s
-    }
-
-    .estCard:hover,
-    .estCard.sel {
-      border-color: var(--acc)
-    }
-
-    .badge {
-      font-size: .8rem;
-      padding: 3px 12px;
-      border-radius: 99px;
-      font-weight: 600
-    }
-
-    .badge.alerta {
-      background: rgba(192, 57, 43, .16);
-      color: #e05646;
-      border: 1px solid #c0392b
-    }
-
-    .badge.estable {
-      background: rgba(46, 139, 87, .14);
-      color: #3cb371;
-      border: 1px solid #2e8b57
-    }
-
-    .barRow {
-      display: grid;
-      grid-template-columns: 145px 1fr 64px;
-      align-items: center;
-      gap: 10px;
-      margin: 8px 0;
-      font-size: .92rem
-    }
-
-    .chartBox {
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 16px;
-      margin: 12px 0;
-      overflow-x: auto
-    }
-
-    .evalRow {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      align-items: center;
-      margin-top: 6px
-    }
-
-    .ghost.onPrec {
-      background: #2e8b57;
-      color: #fff;
-      border-color: #2e8b57
-    }
-
-    .ghost.onNoPrec {
-      background: #c0392b;
-      color: #fff;
-      border-color: #c0392b
-    }
-      .chk { display: flex !important; gap: 10px; align-items: flex-start; color: var(--ink) !important; }
-    .chk input { width: auto; min-height: auto; margin-top: 5px; flex: none; }
-    dialog a { color: var(--acc); }
-    .reply .ayuda { margin-top: 12px; border-left: 4px solid var(--acc); padding: 8px 12px; background: rgba(127, 127, 127, .12); border-radius: 4px 12px 12px 4px; }
-    .aviso h3 { font-family: var(--fh); font-size: 1.05rem; margin: 12px 0 2px; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EmotiData · Diario Emocional Inteligente</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🌤️%3C/text%3E%3C/svg%3E">
+<style>
+:root{--bg:#070d1a;--card:rgba(255,255,255,.05);--line:rgba(255,255,255,.1);--txt:#e8eefc;--mut:#8fa0c4;--blue:#3b82f6;--blue2:#60a5fa;--or:#ff8a3d;--or2:#ffb067}
+*{box-sizing:border-box;margin:0}
+[hidden]{display:none!important}
+body{min-height:100vh;font-family:"Segoe UI",system-ui,sans-serif;color:var(--txt);background:radial-gradient(900px 500px at 10% -10%,rgba(59,130,246,.3),transparent 60%),radial-gradient(800px 500px at 100% 110%,rgba(255,138,61,.22),transparent 60%),var(--bg);background-attachment:fixed}
+.wrap{max-width:860px;margin:0 auto;padding:20px 16px 60px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:8px 0 16px}
+.logo{font-size:1.7rem;font-weight:800;background:linear-gradient(90deg,var(--blue2),var(--or));-webkit-background-clip:text;background-clip:text;color:transparent}
+.chip{position:fixed;top:12px;right:12px;z-index:5;font-size:.8rem;padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:rgba(7,13,26,.85)}
+.chip.ok{border-color:rgba(96,165,250,.6)}.chip.wait{border-color:rgba(255,138,61,.7)}.chip.bad{border-color:#ef4444}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;backdrop-filter:blur(8px);box-shadow:0 10px 40px rgba(0,0,0,.35)}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+nav button,.ghost{background:var(--card);color:var(--txt);border:1px solid var(--line);padding:9px 16px;border-radius:99px;cursor:pointer;font:inherit}
+nav button.on{background:linear-gradient(90deg,var(--blue),#2563eb);border-color:transparent}
+.btn{background:linear-gradient(90deg,var(--blue),var(--or));color:#fff;border:0;padding:12px 22px;border-radius:12px;font:inherit;font-weight:700;cursor:pointer}
+.btn:disabled{opacity:.6;cursor:wait}
+input,textarea{width:100%;background:rgba(0,0,0,.35);color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font:inherit}
+textarea{min-height:140px;resize:vertical}
+input:focus,textarea:focus,button:focus-visible{outline:2px solid var(--or);outline-offset:2px}
+form{display:grid;gap:12px;margin-top:16px}
+h2{margin-bottom:14px;font-size:1.2rem}
+.mut,small{color:var(--mut)}
+.err{color:#ff9b9b}
+#login{max-width:420px;margin:12vh auto 0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.stat{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:14px;padding:16px}
+.stat b{display:block;font-size:1.3rem;margin-bottom:4px}
+.reply{display:flex;gap:14px;align-items:center;margin-top:16px;padding:16px;border-radius:14px;border:1px solid rgba(255,138,61,.4);background:rgba(255,138,61,.08)}
+.big{font-size:2.4rem}
+.item{display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.em{font-size:1.5rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:14px 0}
+.medal{display:flex;flex-direction:column;gap:4px;padding:16px;border-radius:14px;border:1px solid rgba(96,165,250,.4);background:rgba(59,130,246,.1)}
+.medal span{font-size:1.8rem}
+.medal.lock{opacity:.45;filter:grayscale(1);border-color:var(--line)}
+.next{color:var(--or2)}
+#frase{min-height:110px;font-size:1.25rem;line-height:1.5;text-align:center}
+#frase small{display:block;margin-top:8px;font-size:.95rem}
+.resp{width:150px;height:150px;margin:22px auto;border-radius:50%;display:grid;place-items:center;font-weight:700;background:radial-gradient(circle,rgba(96,165,250,.55),rgba(59,130,246,.15));box-shadow:0 0 60px rgba(59,130,246,.5);animation:resp 8s ease-in-out infinite}
+@keyframes resp{0%,100%{transform:scale(.7)}50%{transform:scale(1.1)}}
+.skel{height:70px;border-radius:14px;background:linear-gradient(90deg,rgba(255,255,255,.04),rgba(255,255,255,.1),rgba(255,255,255,.04));background-size:200% 100%;animation:sk 1.2s infinite}
+@keyframes sk{to{background-position:-200% 0}}
+svg{width:100%;height:auto}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
 </head>
-
 <body>
-  <div id="fondo"></div>
-  <dialog id="dAj">
-    <form method="dialog">
-      <h2>Ajustes</h2>
-      <label>Tema de color
-        <select id="tema" aria-label="Tema de color">
-          <optgroup label="Automático">
-            <option value="auto-oscuro">Según mi emoción · oscuro</option>
-            <option value="auto">Según mi emoción · claro</option>
-          </optgroup>
-          <optgroup label="Oscuros y combinados">
-            <option value="azulnaranja">Azul y naranja</option>
-            <option value="medianoche">Medianoche</option>
-            <option value="aurora">Aurora</option>
-            <option value="brasas">Brasas</option>
-            <option value="nocturno">Bosque nocturno</option>
-            <option value="crepusculo">Crepúsculo</option>
-            <option value="noche">Noche</option>
-          </optgroup>
-          <optgroup label="Claros">
-            <option value="atardecer">Atardecer</option>
-            <option value="bosque">Bosque</option>
-            <option value="oceano">Océano</option>
-          </optgroup>
-        </select></label>
-      <label>Fondo
-        <select id="fondoSel" aria-label="Fondo">
-          <option value="liso">Fondo: liso</option>
-          <option value="montanas">Montañas</option>
-          <option value="olas">Olas</option>
-          <option value="estrellas">Estrellas</option>
-          <option value="bosque">Bosque</option>
-          <option value="mia">Mi imagen…</option>
-        </select></label>
-      <input type="file" id="fondoImg" accept="image/*" hidden>
-      <label>Pingüinos
-        <select id="pingSel">
-          <option value="seguir">Me acompañan (siguen el cursor)</option>
-          <option value="quieto">Se quedan en su rincón</option>
-          <option value="mudo">Sin globos de texto</option>
-          <option value="oculto">Ocultar</option>
-        </select>
-      </label>
-      <label class="chk" id="lComp" hidden><input type="checkbox" id="cComp"><span>Compartir indicadores generales de mi ánimo con la psicóloga (mis textos siguen siendo privados).</span></label>
-      <label>Tamaño del texto
-        <div class="tam" id="tam"><button type="button" class="ghost" data-z=".9">A−</button><button type="button"
-            class="ghost" data-z="1">A</button><button type="button" class="ghost" data-z="1.15">A+</button><button
-            type="button" class="ghost" data-z="1.3">A++</button></div>
-      </label>
-      <label>Tipo de letra
-        <select id="fuenteSel">
-          <option value="comoda">Cómoda (recomendada)</option>
-          <option value="facil">Lectura fácil</option>
-          <option value="sans">Todo sin serifa</option>
-        </select>
-      </label>
-      <details id="dPassBox" hidden>
-        <summary>Seguridad · Cambiar contraseña</summary>
-        <div style="display:grid;gap:8px;margin-top:8px">
-          <input id="pActual" type="password" placeholder="Contraseña actual (si ya tenías)">
-          <input id="pNueva" type="password" placeholder="Nueva contraseña (mín. 4 caracteres)">
-          <button type="button" class="ghost" id="bCambiarPass">Guardar contraseña</button>
-          <small id="pPassMsg"></small>
-        </div>
-      </details>
-      <button type="button" class="ghost" id="bBienv">¿Qué es EmotiData?</button>
-      <button class="btn">Listo</button>
-    </form>
-  </dialog>
+<span id="estado" class="chip wait">⏳ Despertando servidor…</span>
 
-  <dialog id="dBienv">
-    <form method="dialog" class="bv">
-      <h2>Bienvenido a EmotiData</h2>
-      <p>EmotiData es un diario emocional donde puedes expresar tus sentimientos y comprender mejor tus emociones.</p>
-      <h3>Cómo funciona</h3>
-      <p>Escribe cómo te sientes, recibe palabras de apoyo y descubre tus emociones mediante un historial visual.
-        También encontrarás un espacio Relax para recuperar la calma.</p>
-      <h3>Nuestro propósito</h3>
-      <p>Brindarte un espacio seguro para conocerte, cuidar tu bienestar emocional y reconocer lo que sientes. EmotiData
-        no sustituye la atención psicológica.</p>
-      <h3>Tu privacidad</h3>
-      <p>Tus escritos son privados. Tu psicóloga o tutora solo podrá ver información general si tú lo autorizas.</p>
-      <div class="ayuda"><b>¿Necesitas ayuda?</b> Línea de la Vida: <b>800 911 2000</b> o llama al <b>911</b>.</div>
-      <button class="btn">Empezar</button>
-    </form>
-  </dialog>
-  <dialog id="dReg">
-    <form id="fRegistro" class="bv">
-      <h2>Crea tu cuenta</h2>
-      <p class="mut">Te enviaremos un correo para confirmar que eres tú.</p>
-      <label>Nombre o apodo<input id="rNombre" maxlength="60" autocomplete="nickname" required></label>
-      <label>Correo<input id="rCorreo" type="email" maxlength="120" autocomplete="email" required></label>
-      <label>Contraseña<input id="rPass" type="password" minlength="8" autocomplete="new-password" required>
-        <small>Mínimo 8 caracteres, con letras y números.</small></label>
-      <label>Repite la contraseña<input id="rPass2" type="password" autocomplete="new-password" required></label>
-      <label class="chk"><input type="checkbox" id="rAviso" required><span>Leí y acepto el <a href="#" id="verAviso">aviso de privacidad</a>, incluido el tratamiento de lo que escribo como dato sensible.</span></label>
-      <label class="chk"><input type="checkbox" id="rEdad" required><span>Soy mayor de edad, o mi madre, padre o tutor autorizó mi uso.</span></label>
-      <label class="chk"><input type="checkbox" id="rComp"><span>(Opcional) Quiero que la psicóloga vea indicadores generales de mi ánimo. Mis textos siguen siendo privados y puedo cambiarlo cuando quiera.</span></label>
-      <p id="rMsg" class="err" role="alert"></p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="bRegistro">Crear mi cuenta</button><button class="ghost" type="button" data-cerrar="dReg">Cancelar</button></div>
-    </form>
-  </dialog>
+<main id="login" class="card" hidden>
+  <div class="logo">EmotiData</div>
+  <p class="mut">Tu diario emocional inteligente</p>
+  <form id="fLogin">
+    <label for="usuario" class="mut">Correo, matrícula o ID</label>
+    <input id="usuario" autocomplete="username" required>
+    <button class="btn" id="bLogin">Entrar</button>
+    <p id="lerr" class="err" role="alert"></p>
+  </form>
+</main>
 
-  <dialog id="dAviso">
-    <div class="bv aviso">
-      <h2>Aviso de privacidad</h2>
-      <small>Versión 2026-11 · BORRADOR: complétalo y revísalo con la psicóloga o asesoría legal antes de abrir el registro.</small>
-      <h3>1. Quién es responsable</h3><p>[NOMBRE DEL RESPONSABLE / INSTITUCIÓN] trata tus datos personales. Contacto: [CORREO DE CONTACTO].</p>
-      <h3>2. Qué datos recabamos</h3><p>Nombre o apodo, correo, contraseña (guardada cifrada), lo que escribes en tu diario, la emoción que identificamos, tus metas y tus avances.</p>
-      <h3>3. Datos sensibles</h3><p>Lo que escribes puede revelar tu estado emocional, que es un dato sensible. Solo lo tratamos con tu consentimiento expreso, que das al aceptar este aviso.</p>
-      <h3>4. Para qué los usamos</h3><p>Para que funcione tu diario, responderte, mostrarte tu evolución y tus logros. Solo si tú lo permites, para que la psicóloga vea indicadores generales de tu ánimo. De forma anónima y agregada, para mejorar la herramienta.</p>
-      <h3>5. Quién ve lo que escribes</h3><p>Solo tú. La psicóloga no ve tus textos: ve únicamente indicadores generales si lo autorizas, y las entradas que decidas compartir una por una. No avisamos a nadie sin tu permiso; si detectamos palabras que sugieren riesgo, te mostramos líneas de ayuda.</p>
-      <h3>6. Con quién los compartimos</h3><p>No vendemos tus datos. Usamos proveedores de alojamiento, base de datos y correo que los tratan por nuestra cuenta.</p>
-      <h3>7. Cuánto tiempo los conservamos</h3><p>Mientras tengas cuenta. Las cuentas sin confirmar se eliminan a los 7 días. Puedes pedir que borremos tu cuenta y tus datos.</p>
-      <h3>8. Tus derechos</h3><p>Puedes acceder, rectificar, cancelar u oponerte al uso de tus datos (derechos ARCO) y retirar tu consentimiento escribiendo a [CORREO DE CONTACTO].</p>
-      <h3>9. Menores de edad</h3><p>Si tienes menos de 18 años necesitas la autorización de tu madre, padre o tutor.</p>
-      <h3>10. Importante</h3><p>EmotiData no es un servicio médico ni de emergencia y no sustituye la atención de un profesional. Si estás en crisis, llama a la Línea de la Vida: 800 911 2000 (24 horas) o al 911.</p>
-      <button class="btn" type="button" data-cerrar="dAviso">Cerrar</button>
-    </div>
-  </dialog>
-
-  <dialog id="dOlvide">
-    <form id="fOlvide" class="bv">
-      <h2>Crea o cambia tu contraseña</h2>
-      <p class="mut">Escribe tu correo y te enviaremos un enlace válido por 1 hora.</p>
-      <label>Correo<input id="oCorreo" type="email" maxlength="120" autocomplete="email" required></label>
-      <p id="oMsg" role="status"></p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn">Enviar enlace</button><button class="ghost" type="button" data-cerrar="dOlvide">Cerrar</button></div>
-    </form>
-  </dialog>
-
-  <dialog id="dEnlace">
-    <form id="fEnlace" class="bv">
-      <h2 id="eTit"></h2>
-      <p id="eTxt" class="mut"></p>
-      <label id="eLbl" hidden>Nueva contraseña<input id="ePass" type="password" minlength="8" autocomplete="new-password"></label>
-      <p id="eMsg" role="status"></p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="bEnlace"></button><button class="ghost" type="button" data-cerrar="dEnlace">Cerrar</button></div>
-    </form>
-  </dialog>
-
-  <span id="estado">Conectando con el servidor…</span>
-
-  <!-- ===== PANTALLA DE INICIO DE SESIÓN ===== -->
-  <main id="login" class="card" hidden>
+<div id="app" class="wrap" hidden>
+  <header>
     <div class="logo">EmotiData</div>
-    <p class="mut">Un lugar tranquilo para escribir cómo te sientes.</p>
-    <form id="fLogin">
-      <label for="usuario" class="mut">Correo, matrícula o ID</label>
-      <input id="usuario" autocomplete="username" placeholder="Ej. alumno@utvm.edu.mx" required>
-      <label for="password" class="mut">Contraseña</label>
-      <input id="password" type="password" autocomplete="current-password" placeholder="Ingresa tu contraseña" required>
-      <button class="btn" id="bLogin">Entrar</button>
-      <p id="lerr" class="err" role="alert"></p>
+    <div><span id="quien" class="mut"></span> <button class="ghost" id="salir">Salir</button></div>
+  </header>
+  <nav>
+    <button data-v="inicio">🏠 Inicio</button>
+    <button data-v="registrar">✍️ Registrar</button>
+    <button data-v="historial">📈 Historial</button>
+    <button data-v="logros">🏅 Logros</button>
+    <button data-v="relax">🧘 Relax</button>
+  </nav>
+
+  <section class="view card" id="v-inicio">
+    <h2>👋 Hola, <span id="nom"></span></h2>
+    <div class="stats" id="resumen"></div>
+  </section>
+
+  <section class="view card" id="v-registrar" hidden>
+    <h2>¿Cómo te sientes hoy?</h2>
+    <form id="fReg">
+      <textarea id="texto" maxlength="1000" placeholder="Escribe lo que piensas o sientes…" required></textarea>
+      <button class="btn" id="bReg">Guardar entrada</button>
     </form>
-    <p style="margin-top:14px;display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center">
-      <button class="ghost" type="button" id="bCrear" hidden>Crear cuenta</button>
-      <button class="ghost" type="button" id="bOlvide">Olvidé mi contraseña</button>
-      <button class="ghost" type="button" id="bReenviar" hidden>Reenviar correo de confirmación</button>
-    </p>
-    <p id="lok" class="okmsg" role="status"></p>
-    <p style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap"><button class="ghost" type="button"
-        id="bAj2">Ajustes</button><button class="ghost" type="button" id="bBienv2">¿Qué es EmotiData?</button></p>
-  </main>
+    <div id="regOut"></div>
+  </section>
 
-  <!-- ===== INTERFAZ DEL ESTUDIANTE ===== -->
-  <div id="app" class="wrap" hidden>
-    <header>
-      <div class="logo">EmotiData</div>
-      <div><span id="quien" class="mut"></span><button class="ghost" id="bAj" type="button">Ajustes</button><button
-          class="ghost" id="salir">Salir</button></div>
-    </header>
-    <nav id="navEst">
-      <button data-v="inicio">Inicio</button>
-      <button data-v="registrar">Escribir</button>
-      <button data-v="historial">Mi mes</button>
-      <button data-v="cambio">Atrévete al cambio</button>
-      <button data-v="logros">Logros</button>
-      <button data-v="chat">Charla</button>
-      <button data-v="relax">Relax</button>
-    </nav>
+  <section class="view card" id="v-historial" hidden>
+    <h2>Tu evolución emocional</h2>
+    <div id="grafica"></div>
+    <div id="lista"></div>
+  </section>
 
-    <section class="view card" id="v-inicio">
-      <h2>Hola, <span id="nom"></span></h2>
-      <p class="mut">Qué bueno verte por aquí.</p>
-      <div class="stats" id="resumen"></div>
-    </section>
+  <section class="view card" id="v-logros" hidden>
+    <h2>Tus logros</h2>
+    <div id="logros"></div>
+  </section>
 
-    <section class="view card" id="v-registrar" hidden>
-      <h2>¿Cómo va tu día?</h2>
-      <p class="mut">Escríbelo con calma, aquí no hay respuestas incorrectas.</p>
-      <form id="fReg">
-        <textarea id="texto" maxlength="1000" placeholder="Hoy me siento…" required></textarea>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-          <button class="btn" id="bReg">Guardar</button>
-          <button class="ghost" type="button" id="bMic" hidden>Dictar con mi voz</button>
-          <small id="micMsg"></small>
-        </div>
-      </form>
-      <div id="regOut"></div>
-    </section>
+  <section class="view card" id="v-relax" hidden>
+    <h2>Zona Relax</h2>
+    <div class="resp" id="resp">Inhala</div>
+    <div id="frase"></div>
+    <p style="text-align:center;margin-top:12px"><button class="ghost" id="otra">Otra frase ➜</button></p>
+  </section>
+</div>
 
-    <section class="view card" id="v-historial" hidden>
-      <h2>Tu mes en colores</h2>
-      <p class="mut">Cada día toma el color de la emoción que registraste. Tus textos son privados salvo los que elijas
-        compartir.</p>
-      <div id="mes" class="mesGrid"></div>
-      <div id="leyenda"></div>
-      <div id="lista"></div>
-    </section>
+<script>
+/* ===== CONFIG: única línea que cambia entre entornos ===== */
+const API_BASE = "https://emotidata-backend.onrender.com";
 
-    <section class="view card" id="v-cambio" hidden>
-      <h2>Atrévete al cambio</h2>
-      <p class="mut">Elige de 3 a 5 metas para este mes: te dan rumbo y un sentido de logro al completarlas. Para cada
-        día, una micro-acción que te acerque a ellas. Cada acción cumplida es una victoria diaria, y así mantienes el
-        impulso sin agotarte.</p>
-      <div id="cHoy"></div>
-      <div id="cMetas"></div>
-      <details id="cNueva">
-        <summary>Crear mi propia meta</summary>
-        <form id="fCambio">
-          <label>¿Qué quieres lograr?
-            <select id="cTipo">
-              <option value="construir">Construir un hábito nuevo</option>
-              <option value="mejorar">Mejorar uno que ya tengo</option>
-              <option value="soltar">Soltar uno que me hace daño (y sustituirlo)</option>
-            </select>
-          </label>
-          <label>Mi meta del mes<input id="cTitulo" maxlength="60" placeholder="Ej.: Dormir mejor" required></label>
-          <label>Mi micro-acción de cada día<input id="cMicro" maxlength="100"
-              placeholder="Ej.: 25 minutos de estudio sin celular" required></label>
-          <label>Meta: ¿cuántos días de este mes?<input id="cMeta" type="number" min="5" max="31" value="20"></label>
-          <button class="btn">Agregar meta</button>
-        </form>
-      </details>
-      <h3 class="sec">Ideas para empezar</h3>
-      <p class="mut" id="cSug"></p>
-      <div id="cIdeas" style="display:flex;gap:8px;flex-wrap:wrap"></div>
-      <h3 class="sec">Logros de cambio</h3>
-      <div id="cLogros"></div>
-      <p><small>Son sugerencias generales de hábitos, no un tratamiento. Tus metas se sincronizan con tu cuenta.</small>
-      </p>
-    </section>
+const EMO = {"Alegría":"😊","Tristeza":"😢","Miedo / Ansiedad":"😰","Enojo":"😠","Neutral":"😐"};
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let session = null, frases = [], fi = 0;
+try { session = JSON.parse(sessionStorage.getItem("emoti") || "null"); } catch (e) {}
 
-    <section class="view card" id="v-logros" hidden>
-      <h2>Tus logros</h2>
-      <div id="logros"></div>
-      <h3 class="sec">Logros de cambio</h3>
-      <div id="logrosCambio"></div>
-    </section>
+async function api(path, body) {
+  const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 100000);
+  const h = {};
+  if (body) h["Content-Type"] = "application/json";
+  if (session && session.token) h.Authorization = "Bearer " + session.token; /* listo para JWT (paso 4) */
+  try {
+    const r = await fetch(API_BASE + path, { method: body ? "POST" : "GET", headers: h, body: body ? JSON.stringify(body) : undefined, signal: ctrl.signal });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || "Error " + r.status);
+    return d;
+  } catch (e) {
+    if (e.name === "AbortError") throw new Error("El servidor tardó demasiado. Intenta de nuevo.");
+    if (e instanceof TypeError) throw new Error("No se pudo conectar con el servidor (revisa CORS_ORIGINS en Render).");
+    throw e;
+  } finally { clearTimeout(t); }
+}
 
-    <section class="view card" id="v-relax" hidden>
-      <h2>Un momento para ti</h2>
-      <div class="resp" id="resp">Inhala</div>
-      <div id="frase"></div>
-      <p style="text-align:center;margin-top:12px"><button class="ghost" id="otra">Otra frase</button></p>
-    </section>
+/* Despierta el servidor de Render (plan gratuito) y precarga las frases */
+async function despertar() {
+  const s = $("#estado");
+  s.textContent = "⏳ Despertando servidor…"; s.className = "chip wait";
+  try {
+    frases = (await api("/api/relax/frases")).frases || [];
+    s.textContent = "🟢 Servidor listo"; s.className = "chip ok";
+  } catch (e) { s.textContent = "🔴 Sin conexión"; s.className = "chip bad"; s.title = e.message; }
+}
 
-    <section class="view card" id="v-chat" hidden>
-      <h2>Charla rápida</h2>
-      <p class="mut">Una guía sencilla con ideas para la calma. No es una persona ni una terapeuta, funciona solo en tu
-        dispositivo y la conversación no se guarda.</p>
-      <div id="chat"></div>
-      <div id="chips"></div>
-      <form id="fChat" style="display:flex;gap:8px;margin-top:0">
-        <input id="tChat" maxlength="300" autocomplete="off" placeholder="Escribe aquí…">
-        <button class="btn">Enviar</button>
-      </form>
-    </section>
-  </div>
+function guardar() { try { sessionStorage.setItem("emoti", JSON.stringify(session)); } catch (e) {} }
 
-  <!-- ===== PANEL DE LA PSICÓLOGA / TUTORÍA ===== -->
-  <div id="appPsico" class="wrap" hidden>
-    <header>
-      <div class="logo">EmotiData · Tutoría</div>
-      <div><span id="quienPsico" class="mut"></span><button class="ghost" id="bAjP"
-          type="button">Ajustes</button><button class="ghost" id="salirP">Salir</button></div>
-    </header>
-    <nav id="navPsico">
-      <button data-vp="estudio" class="on">Pacientes y estudio mensual</button>
-      <button data-vp="nuevo">Registrar estudiante</button>
-    </nav>
+function entrar() {
+  $("#login").hidden = true; $("#app").hidden = false;
+  $("#nom").textContent = session.nombre; $("#quien").textContent = session.nombre;
+  show("inicio");
+}
+function salir() {
+  session = null; try { sessionStorage.removeItem("emoti"); } catch (e) {}
+  $("#app").hidden = true; $("#login").hidden = false; $("#usuario").value = "";
+}
 
-    <section class="pview card" id="vp-estudio">
-      <h2>Seguimiento emocional y precisión</h2>
-      <p class="mut">Consulta métricas agregadas, evolución mensual y evalúa la pertinencia de las recomendaciones
-        generadas por el sistema.</p>
-      <div class="stats" id="pKpis"></div>
+const vistas = { inicio: cargarInicio, registrar: () => {}, historial: cargarHistorial, logros: cargarLogros, relax: cargarRelax };
+function show(v) {
+  document.querySelectorAll(".view").forEach(x => x.hidden = x.id !== "v-" + v);
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+  vistas[v]();
+}
 
-      <div style="margin-top:18px;display:grid;gap:10px">
-        <input id="pBuscar" placeholder="Buscar estudiante por nombre, correo o matrícula…">
-        <div id="pListaEst" style="display:grid;gap:10px"></div>
-      </div>
+/* ---------- Login ---------- */
+$("#fLogin").onsubmit = async e => {
+  e.preventDefault();
+  const u = $("#usuario").value.trim(); if (!u) return;
+  const b = $("#bLogin"); b.disabled = true; b.textContent = "Entrando…"; $("#lerr").textContent = "";
+  try {
+    const d = await api("/api/login", { usuario: u }); /* TODO paso 4: contraseña + token */
+    const rol = d.rol || d.Rol || "estudiante";
+    if (rol === "psicologa") throw new Error("El panel de la psicóloga se habilitará junto con la seguridad. Por ahora usa la app de escritorio.");
+    session = { id: d.id || d.usuario_id, nombre: d.nombre || d.nombre_completo || "Usuario", rol, token: d.token };
+    guardar(); entrar();
+  } catch (err) { $("#lerr").textContent = err.message; }
+  b.disabled = false; b.textContent = "Entrar";
+};
 
-      <div id="pDetalle" hidden style="margin-top:26px;padding-top:22px;border-top:1px solid var(--line)">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-          <div>
-            <h2 id="pEstNombre"></h2>
-            <small id="pEstInfo"></small>
-          </div>
-          <label style="display:flex;align-items:center;gap:8px;color:var(--mut)">
-            Mes de estudio:
-            <select id="pMesSel"></select>
-          </label>
-        </div>
+/* ---------- Inicio ---------- */
+async function cargarInicio() {
+  const box = $("#resumen"); box.innerHTML = '<div class="skel"></div>';
+  try {
+    const d = await api("/api/usuario/resumen/" + encodeURIComponent(session.id));
+    box.innerHTML = `
+      <div class="stat"><b>🔥 ${esc(d.racha_dias)}</b><span class="mut">días de racha</span></div>
+      <div class="stat"><b>${EMO[d.ultima_emocion] || "🙂"} ${esc(d.ultima_emocion)}</b><span class="mut">última emoción</span></div>
+      <div class="stat"><b>📅 ${esc(String(d.fecha_ultima).slice(0, 10))}</b><span class="mut">último registro</span></div>`;
+  } catch (e) { box.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+}
 
-        <div class="stats" id="pEstStats"></div>
+/* ---------- Registrar ---------- */
+$("#fReg").onsubmit = async e => {
+  e.preventDefault();
+  const texto = $("#texto").value.trim(); if (!texto) return;
+  const b = $("#bReg"), out = $("#regOut"); b.disabled = true; b.textContent = "Guardando…";
+  try {
+    const d = await api("/api/diario/registrar", { usuario_id: session.id, texto });
+    out.innerHTML = `<div class="reply"><div class="big">${EMO[d.emocion] || "🙂"}</div><div><b>${esc(d.emocion)}</b><p>${esc(d.mensaje_empatico)}</p></div></div>`;
+    $("#texto").value = "";
+  } catch (err) { out.innerHTML = `<p class="err">${esc(err.message)}</p>`; }
+  b.disabled = false; b.textContent = "Guardar entrada";
+};
 
-        <h3 class="sec">1. Distribución emocional del mes</h3>
-        <div class="chartBox" id="pChartDist"></div>
+/* ---------- Historial + gráfica SVG ---------- */
+async function cargarHistorial() {
+  const lista = $("#lista"); lista.innerHTML = '<div class="skel"></div>'; $("#grafica").innerHTML = "";
+  try {
+    const es = (await api("/api/diario/historial/" + encodeURIComponent(session.id))).entradas || [];
+    if (!es.length) { lista.innerHTML = '<p class="mut">Aún no hay entradas.</p>'; return; }
+    dibujar(es.slice(0, 30).reverse());
+    lista.innerHTML = es.map(x => `<div class="item"><span class="em">${EMO[x.emocion] || "🙂"}</span><div><small>${esc(x.fecha)} · ${esc(x.emocion)}</small><p>${esc(x.texto_original)}</p></div></div>`).join("");
+  } catch (e) { lista.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+}
+function dibujar(es) {
+  const W = 600, H = 200, p = 24, n = es.length;
+  const X = i => p + (n === 1 ? (W - 2 * p) / 2 : i * (W - 2 * p) / (n - 1));
+  const Y = v => p + (1 - v) / 2 * (H - 2 * p);
+  const pts = es.map((x, i) => { const v = +x.puntuacion || 0; return [X(i), Y(v), v]; });
+  $("#grafica").innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolución de tu estado emocional">
+    <defs><linearGradient id="gr" x1="0" x2="1"><stop offset="0" stop-color="#3b82f6"/><stop offset="1" stop-color="#ff8a3d"/></linearGradient></defs>
+    <line x1="${p}" x2="${W - p}" y1="${Y(0)}" y2="${Y(0)}" stroke="rgba(255,255,255,.18)" stroke-dasharray="4 4"/>
+    <text x="${p}" y="14" fill="#8fa0c4" font-size="11">Positivo</text>
+    <text x="${p}" y="${H - 6}" fill="#8fa0c4" font-size="11">Negativo</text>
+    <polyline points="${pts.map(q => q[0].toFixed(1) + "," + q[1].toFixed(1)).join(" ")}" fill="none" stroke="url(#gr)" stroke-width="3" stroke-linejoin="round"/>
+    ${pts.map(q => `<circle cx="${q[0]}" cy="${q[1]}" r="5" fill="${q[2] > 0 ? "#60a5fa" : q[2] < 0 ? "#ff8a3d" : "#8fa0c4"}"/>`).join("")}</svg>`;
+}
 
-        <h3 class="sec">2. Evolución diaria del índice emocional y calendario</h3>
-        <div class="chartBox" id="pChartLinea"></div>
-        <div id="pMesGrid" class="mesGrid"></div>
-
-        <h3 class="sec">3. Hábitos activos del alumno ("Atrévete al cambio")</h3>
-        <div id="pHabitos"></div>
-
-        <h3 class="sec">4. Recomendaciones generadas y auditoría de precisión</h3>
-        <p class="mut">Valida si la respuesta empática y el reto sugerido por EmotiData fueron adecuados para el estado
-          emocional detectado.</p>
-        <div id="pRecs"></div>
-
-        <h3 class="sec">5. Notas clínicas de seguimiento</h3>
-        <form id="fNotaPsico" style="margin-top:8px">
-          <textarea id="tNotaPsico" style="min-height:95px"
-            placeholder="Escribe tus observaciones clínicas o acuerdos de sesión para este estudiante…"
-            required></textarea>
-          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-            <button class="btn" id="bGuardarNota">Guardar nota clínica</button>
-            <small id="msgNotaPsico"></small>
-          </div>
-        </form>
-        <div id="pNotasLista" style="margin-top:12px"></div>
-      </div>
-    </section>
-
-    <section class="pview card" id="vp-nuevo" hidden>
-      <h2>Registrar nuevo estudiante</h2>
-      <p class="mut">Crea una cuenta institucional para que el alumno pueda ingresar desde la web o la app de
-        escritorio.</p>
-      <form id="fRegEst">
-        <label>Nombre completo<input id="reNombre" placeholder="Ej. María Fernanda López" required></label>
-        <label>Correo electrónico<input id="reCorreo" type="email" placeholder="Ej. maria.lopez@utvm.edu.mx"
-            required></label>
-        <label>Matrícula<input id="reMat" placeholder="Ej. 20261045"></label>
-        <label>Carrera o grupo<input id="reCarrera" placeholder="Ej. Ingeniería en TI · 5°A"></label>
-        <label>Contraseña inicial<input id="rePass" type="password" placeholder="Mínimo 4 caracteres" required></label>
-        <button class="btn" id="bRegEst">Registrar estudiante</button>
-        <p id="reMsg" role="alert"></p>
-      </form>
-    </section>
-  </div>
-
-  <script src="pinguinos.js"></script>
-  <script>
-    /* ===== CONFIG ===== */
-    const API_BASE = "https://emotidata-backend.onrender.com";
-
-    const P = {
-      "Alegría": { bg: "#fff3d6", card: "#fffaf0", ink: "#3a2a0a", mut: "#7a6a45", acc: "#f0a020", bt: "#2a1d05", line: "rgba(58,42,10,.16)" },
-      "Tristeza": { bg: "#e4edf6", card: "#f4f8fc", ink: "#1d2c3d", mut: "#5d6f84", acc: "#4a78a8", bt: "#fff", line: "rgba(29,44,61,.16)" },
-      "Miedo / Ansiedad": { bg: "#ebe7f4", card: "#f7f5fb", ink: "#2b2540", mut: "#6c6585", acc: "#7b6aa8", bt: "#fff", line: "rgba(43,37,64,.16)" },
-      "Enojo": { bg: "#f7e4dc", card: "#fdf4f0", ink: "#3d1d14", mut: "#80574b", acc: "#c4553a", bt: "#fff", line: "rgba(61,29,20,.16)" },
-      "Neutral": { bg: "#e9ede4", card: "#f6f8f3", ink: "#22291f", mut: "#626b5d", acc: "#5f7a5a", bt: "#fff", line: "rgba(34,41,31,.16)" }
-    };
-    const T = {
-      atardecer: { bg: "#f6efe6", card: "#fffaf3", ink: "#1f2a44", mut: "#6b6f80", acc: "#e8772e", bt: "#1f1a10", line: "rgba(31,42,68,.15)" },
-      bosque: { bg: "#e9eee6", card: "#f6f9f3", ink: "#1f2d22", mut: "#5f6f62", acc: "#4f7a58", bt: "#fff", line: "rgba(31,45,34,.15)" },
-      oceano: { bg: "#e4eef2", card: "#f3f8fa", ink: "#12303d", mut: "#587684", acc: "#23708d", bt: "#fff", line: "rgba(18,48,61,.15)" },
-      noche: { bg: "#141a2b", card: "#1d2438", ink: "#eae6dc", mut: "#a3a8b8", acc: "#f2a65a", bt: "#1b1408", line: "rgba(234,230,220,.16)" },
-      medianoche: { bg: "#0f1526", bgi: "linear-gradient(160deg,#0f1526 0%,#18213d 55%,#241b3a 100%)", card: "rgba(255,255,255,.06)", ink: "#e9e7f1", mut: "#a4a8bd", acc: "#ff8f7a", bt: "#1a0f0d", line: "rgba(255,255,255,.14)" },
-      aurora: { bg: "#0b1c20", bgi: "linear-gradient(150deg,#0b1c20 0%,#10343a 50%,#2a2250 100%)", card: "rgba(255,255,255,.06)", ink: "#e4f1ef", mut: "#9db8b6", acc: "#6fe0c0", bt: "#06231c", line: "rgba(255,255,255,.14)" },
-      brasas: { bg: "#17120f", bgi: "linear-gradient(160deg,#17120f 0%,#2a1a12 60%,#3b2214 100%)", card: "rgba(255,255,255,.06)", ink: "#f1e6da", mut: "#b5a595", acc: "#f0a04b", bt: "#241505", line: "rgba(255,255,255,.14)" },
-      nocturno: { bg: "#0e1a15", bgi: "linear-gradient(160deg,#0e1a15 0%,#14302a 60%,#1c2b3a 100%)", card: "rgba(255,255,255,.06)", ink: "#e3efe6", mut: "#9fb5a6", acc: "#e8b25a", bt: "#231a06", line: "rgba(255,255,255,.14)" },
-      crepusculo: { bg: "#1a1426", bgi: "linear-gradient(160deg,#1a1426 0%,#2b1d3d 55%,#3a2236 100%)", card: "rgba(255,255,255,.06)", ink: "#efe6f1", mut: "#b3a6bd", acc: "#f08fb0", bt: "#2a0f1b", line: "rgba(255,255,255,.14)" },
-      azulnaranja: { bg: "#0f1b33", bgi: "linear-gradient(165deg,#0f1b33 0%,#16294d 60%,#3a2a2a 100%)", card: "rgba(255,255,255,.06)", ink: "#eef1f8", mut: "#a9b4cc", acc: "#ff8a3d", bt: "#241005", line: "rgba(255,255,255,.14)" }
-    };
-    const col = e => (P[e] || T.atardecer).acc;
-    const $ = s => document.querySelector(s);
-    const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-    const lget = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
-    const lset = (k, v) => { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) { } };
-    let session = null, frases = [], fi = 0, ultimoRetoSugerido = null, listaEstCache = [], estSelId = null;
-    try { session = JSON.parse(sessionStorage.getItem("emoti") || "null"); } catch (e) { }
-
-    const mix = (a, b, t) => { const h = s => [1, 3, 5].map(i => parseInt(s.slice(i, i + 2), 16)); const x = h(a), y = h(b); return "#" + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, "0")).join(""); };
-    const oscuro = acc => ({ bg: mix("#0e1320", acc, .16), bgi: `linear-gradient(160deg,${mix("#0e1320", acc, .10)} 0%,${mix("#0e1320", acc, .28)} 100%)`, card: "rgba(255,255,255,.07)", ink: "#ece9e2", mut: "#a9acb8", acc: mix(acc, "#ffffff", .25), bt: "#14110c", line: "rgba(255,255,255,.15)" });
-    function aplicarTema() {
-      const t = lget("emoti_tema") || "auto-oscuro", em = P[lget("emoti_emo")] || T.atardecer;
-      const p = t === "auto" ? em : t === "auto-oscuro" ? oscuro(em.acc) : (T[t] || T.atardecer);
-      const st = document.body.style;
-      for (const k in p) st.setProperty("--" + k, p[k]);
-      st.setProperty("--bgi", p.bgi || "none");
-      $("#tema").value = t;
-      aplicarFondo();
-      if (window.PIN) PIN.tema();
-    }
-    function emo(e) { if (e) { lset("emoti_emo", e); aplicarTema(); } }
-    $("#tema").onchange = e => { lset("emoti_tema", e.target.value); aplicarTema(); };
-
-    async function api(path, body, methodOverride) {
-      const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 100000);
-      const method = methodOverride || (body ? "POST" : "GET");
-      const h = {};
-      if (body) h["Content-Type"] = "application/json";
-      if (session && session.token) h.Authorization = "Bearer " + session.token;
-      try {
-        const r = await fetch(API_BASE + path, { method, headers: h, body: body ? JSON.stringify(body) : undefined, signal: ctrl.signal });
-        const d = await r.json().catch(() => ({}));
-        if (r.status === 401 && session && !path.startsWith("/api/auth/") && path !== "/api/login") { salir(); $("#lerr").textContent = d.error || "Tu sesión expiró. Inicia sesión de nuevo."; }
-        if (!r.ok) { const er = new Error(d.error || "Error " + r.status); er.datos = d; er.status = r.status; throw er; }
-        return d;
-      } catch (e) {
-        if (e.name === "AbortError") throw new Error("El servidor tardó demasiado. Intenta de nuevo.");
-        if (e instanceof TypeError) throw new Error("No se pudo conectar con el servidor.");
-        throw e;
-      } finally { clearTimeout(t); }
-    }
-
-    async function despertar() {
-      const s = $("#estado");
-      try { frases = (await api("/api/relax/frases")).frases || []; s.textContent = "● Servidor listo"; s.style.color = "#2e8b57"; }
-      catch (e) { s.textContent = "● Sin conexión"; s.style.color = "#c0392b"; s.title = e.message; }
-    }
-
-    function entrar() {
-      if (window.PIN) PIN.sesion(session);
-      $("#login").hidden = true;
-      $("#dPassBox").hidden = false;
-      if (session.rol === "psicologa") {
-        $("#app").hidden = true;
-        $("#appPsico").hidden = false;
-        $("#quienPsico").textContent = session.nombre;
-        showPsico("estudio");
-        cargarPanelPsicologa();
-      } else {
-        $("#appPsico").hidden = true;
-        $("#app").hidden = false;
-        $("#nom").textContent = session.nombre;
-        $("#quien").textContent = session.nombre;
-        show("inicio");
-        cargarConsentimiento();
-        const kb = "emoti_bienv_" + session.id;
-        if (!lget(kb)) { lset(kb, "1"); abrir("#dBienv"); }
-      }
-    }
-
-    function salir() {
-      if (window.PIN) PIN.sesion(null);
-      session = null; try { sessionStorage.removeItem("emoti"); } catch (e) { }
-      lset("emoti_emo", null); aplicarTema(); $("#chat").innerHTML = ""; limpiarCaches();
-      $("#dPassBox").hidden = true;
-      $("#app").hidden = true; $("#appPsico").hidden = true;
-      $("#login").hidden = false; $("#usuario").value = ""; $("#password").value = "";
-    }
-
-    const vistas = { inicio: cargarInicio, registrar: () => { }, historial: cargarHistorial, logros: () => { cargarLogros(); cargarCambio(); }, relax: cargarRelax, chat: iniciarChat, cambio: cargarCambio };
-    function show(v) {
-      if (window.PIN) PIN.tab(v);
-      document.querySelectorAll(".view").forEach(x => x.hidden = x.id !== "v-" + v);
-      document.querySelectorAll("#navEst button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
-      vistas[v]();
-    }
-
-    function showPsico(v) {
-      document.querySelectorAll(".pview").forEach(x => x.hidden = x.id !== "vp-" + v);
-      document.querySelectorAll("#navPsico button").forEach(b => b.classList.toggle("on", b.dataset.vp === v));
-    }
-
-    /* ---------- Cuenta nueva, confirmación por correo y privacidad ---------- */
-    let cidActual = null, cidTexto = "";
-    function cidPara(t) { /* mismo identificador mientras el texto no cambie: un reintento nunca duplica la entrada */
-      if (t !== cidTexto || !cidActual) { cidTexto = t; cidActual = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)).replace(/[^A-Za-z0-9_-]/g, ""); }
-      return cidActual;
-    }
-    function limpiarCaches() { try { Object.keys(localStorage).filter(k => k.startsWith("emoti_h_")).forEach(k => localStorage.removeItem(k)); } catch (e) { } }
-    if (lget("emoti_cache_v") !== "2") { limpiarCaches(); lset("emoti_cache_v", "2"); }
-    function cerrar(id) { const d = $("#" + id); if (d.close) d.close(); else d.removeAttribute("open"); }
-    document.addEventListener("click", e => {
-      const c = e.target.closest("[data-cerrar]"); if (c) cerrar(c.dataset.cerrar);
-      if (e.target.id === "verAviso") { e.preventDefault(); abrir("#dAviso"); }
-    });
-    const REG_HTML = $("#fRegistro").innerHTML;
-    async function cargarConfigAuth() { try { $("#bCrear").hidden = !(await api("/api/auth/config")).registro; } catch (e) { } }
-    $("#bCrear").onclick = () => { $("#fRegistro").innerHTML = REG_HTML; abrir("#dReg"); };
-    $("#bOlvide").onclick = () => abrir("#dOlvide");
-    $("#fRegistro").onsubmit = async e => {
-      e.preventDefault(); const m = $("#rMsg"); m.textContent = "";
-      if ($("#rPass").value !== $("#rPass2").value) { m.textContent = "Las contraseñas no coinciden."; return; }
-      const b = $("#bRegistro"); b.disabled = true; b.textContent = "Creando…";
-      try {
-        const d = await api("/api/auth/registro", { nombre: $("#rNombre").value.trim(), correo: $("#rCorreo").value.trim(), password: $("#rPass").value, acepta_aviso: $("#rAviso").checked, mayor_edad: $("#rEdad").checked, compartir_psicologa: $("#rComp").checked });
-        $("#fRegistro").innerHTML = `<h2>Revisa tu correo</h2><p>${esc(d.mensaje)}</p><p class="mut">Abre el enlace del mensaje para confirmar tu cuenta y después inicia sesión. El enlace dura 48 horas.</p><button class="btn" type="button" data-cerrar="dReg">Entendido</button>`;
-      } catch (err) { m.textContent = err.message; b.disabled = false; b.textContent = "Crear mi cuenta"; }
-    };
-    $("#fOlvide").onsubmit = async e => {
-      e.preventDefault(); const m = $("#oMsg");
-      try { const d = await api("/api/auth/olvide", { correo: $("#oCorreo").value.trim() }); m.className = "okmsg"; m.textContent = d.mensaje; }
-      catch (err) { m.className = "err"; m.textContent = err.message; }
-    };
-    $("#bReenviar").onclick = async () => {
-      const c = $("#usuario").value.trim();
-      if (!c.includes("@")) { $("#lerr").textContent = "Escribe tu correo en el primer campo y vuelve a pulsar."; return; }
-      try { $("#lok").textContent = (await api("/api/auth/reenviar", { correo: c })).mensaje; $("#lerr").textContent = ""; } catch (err) { $("#lerr").textContent = err.message; }
-    };
-    function procesarEnlace() { /* enlaces del correo: #verificar=TOKEN o #restablecer=TOKEN */
-      const m = location.hash.match(/^#(verificar|restablecer)=([\w\-\.]+)$/); if (!m) return;
-      const modo = m[1], token = m[2], b = $("#bEnlace"), msg = $("#eMsg");
-      history.replaceState(null, "", location.pathname + location.search); /* el token no queda en el historial */
-      msg.textContent = ""; msg.className = "";
-      if (modo === "verificar") { $("#eTit").textContent = "Confirma tu cuenta"; $("#eTxt").textContent = "Pulsa el botón para activar tu cuenta de EmotiData."; $("#eLbl").hidden = true; $("#ePass").required = false; b.textContent = "Confirmar mi cuenta"; }
-      else { $("#eTit").textContent = "Elige tu contraseña"; $("#eTxt").textContent = "Mínimo 8 caracteres, con letras y números."; $("#eLbl").hidden = false; $("#ePass").required = true; b.textContent = "Guardar contraseña"; }
-      b.hidden = false; b.disabled = false;
-      $("#fEnlace").onsubmit = async ev => {
-        ev.preventDefault(); b.disabled = true;
-        try {
-          const d = await api(modo === "verificar" ? "/api/auth/verificar" : "/api/auth/restablecer", modo === "verificar" ? { token } : { token, password: $("#ePass").value });
-          msg.className = "okmsg"; msg.textContent = d.mensaje + " Cierra esta ventana e inicia sesión."; b.hidden = true; $("#ePass").value = "";
-        } catch (err) { msg.className = "err"; msg.textContent = err.message; b.disabled = false; }
-      };
-      abrir("#dEnlace");
-    }
-    async function cargarConsentimiento() {
-      try { const y = await api("/api/auth/yo"); $("#cComp").checked = !!y.compartir_con_psicologa; $("#lComp").hidden = false; } catch (e) { }
-    }
-    $("#cComp").onchange = async e => {
-      try { await api("/api/usuario/consentimiento", { compartir_con_psicologa: e.target.checked }); }
-      catch (err) { e.target.checked = !e.target.checked; alert(err.message); }
-    };
-
-    /* ---------- Login y cambio de contraseña ---------- */
-    $("#fLogin").onsubmit = async e => {
-      e.preventDefault();
-      const u = $("#usuario").value.trim(), password = $("#password").value;
-      if (!u || !password) return;
-      const b = $("#bLogin"); b.disabled = true; b.textContent = "Entrando…"; $("#lerr").textContent = "";
-      try {
-        const d = await api("/api/login", { usuario: u, password });
-        const rol = d.rol || d.Rol || "estudiante";
-        session = { id: d.id || d.usuario_id, nombre: d.nombre || d.nombre_completo || "Usuario", rol, token: d.token };
-        try { sessionStorage.setItem("emoti", JSON.stringify(session)); } catch (x) { }
-        entrar();
-      } catch (err) { $("#lerr").textContent = err.message; $("#bReenviar").hidden = !(err.datos && err.datos.pendiente_verificacion); }
-      b.disabled = false; b.textContent = "Entrar";
-    };
-
-    $("#bCambiarPass").onclick = async () => {
-      if (!session) return;
-      const actual = $("#pActual").value, nueva = $("#pNueva").value, msgEl = $("#pPassMsg");
-      msgEl.textContent = "Guardando…";
-      try {
-        const d = await api("/api/usuario/cambiar_password", { usuario_id: session.id, actual, nueva });
-        msgEl.className = "okmsg"; msgEl.textContent = d.mensaje;
-        $("#pActual").value = ""; $("#pNueva").value = "";
-      } catch (err) { msgEl.className = "err"; msgEl.textContent = err.message; }
-    };
-
-    /* ---------- Inicio ---------- */
-    async function cargarInicio() {
-      const box = $("#resumen"); box.innerHTML = '<div class="skel"></div>';
-      try {
-        const d = await api("/api/usuario/resumen/" + encodeURIComponent(session.id));
-        emo(d.ultima_emocion);
-        box.innerHTML = `
-      <div class="stat"><b>${esc(d.racha_dias)}</b><span class="mut">días de racha</span></div>
-      <div class="stat"><b><i class="dot" style="background:${col(d.ultima_emocion)};margin:0 8px 2px 0"></i>${esc(d.ultima_emocion)}</b><span class="mut">última emoción</span></div>
-      <div class="stat"><b>${esc(String(d.fecha_ultima).slice(0, 10))}</b><span class="mut">último registro</span></div>`;
-      } catch (e) { box.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
-    }
-
-    /* ---------- Escribir + Reto sugerido + Compartir opcional ---------- */
-    $("#fReg").onsubmit = async e => {
-      e.preventDefault();
-      const texto = $("#texto").value.trim(); if (!texto) return;
-      const b = $("#bReg"), out = $("#regOut"); b.disabled = true; b.textContent = "Guardando…";
-      const w = setTimeout(() => { b.textContent = "Despertando al servidor, un momento…"; }, 5000);
-      try {
-        const d = await api("/api/diario/registrar", { usuario_id: session.id, texto, cid: cidPara(texto) });
-        emo(d.emocion);
-        ultimoRetoSugerido = d.reto_sugerido || null;
-        const retoHtml = ultimoRetoSugerido
-          ? `<div style="padding-top:10px;border-top:1px solid var(--line);display:grid;gap:6px">
-               <small>Reto sugerido para hoy · <b>${esc(ultimoRetoSugerido.titulo)}</b></small>
-               <small>${esc(ultimoRetoSugerido.micro_accion)} (${esc(ultimoRetoSugerido.duracion_dias || 15)} días)</small>
-               <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-                 <button type="button" class="ghost q" id="bAceptarReto">Aceptar este reto</button>
-                 ${d.log_id ? `<button type="button" class="ghost q" data-comp="${esc(d.log_id)}">Compartir esta entrada con tutoría</button>` : ""}
-               </div>
-               <small id="retoMsg"></small>
-             </div>`
-          : "";
-        const ayudaHtml = d.ayuda ? `<div class="ayuda"><b>${esc(d.ayuda.mensaje)}</b><br>${(d.ayuda.lineas || []).map(l => `${esc(l.nombre)}: <b>${esc(l.telefono)}</b> (${esc(l.detalle)})`).join("<br>")}</div>` : "";
-        out.innerHTML = `<div class="reply"><b>${esc(d.emocion)}</b><p>${esc(d.mensaje_empatico)}</p>${ayudaHtml}${retoHtml}</div>`;
-        $("#texto").value = ""; cidActual = null;
-        if (window.PIN) PIN.evento(d.ayuda ? "riesgo" : "guardado");
-      } catch (err) { out.innerHTML = `<p class="err">${esc(err.message)}</p>`; }
-      clearTimeout(w); b.disabled = false; b.textContent = "Guardar";
-    };
-
-    $("#regOut").onclick = async e => {
-      if (e.target.id === "bAceptarReto" && ultimoRetoSugerido) {
-        const btn = e.target; btn.disabled = true;
-        try {
-          await api("/api/habitos/asignar", {
-            usuario_id: session.id,
-            reto_id: ultimoRetoSugerido.id,
-            tipo: ultimoRetoSugerido.tipo || "construir",
-            titulo: ultimoRetoSugerido.titulo,
-            micro_accion: ultimoRetoSugerido.micro_accion,
-            meta_dias: ultimoRetoSugerido.duracion_dias || 20
-          });
-          $("#retoMsg").className = "okmsg";
-          $("#retoMsg").textContent = "✓ Reto agregado a tu sección «Atrévete al cambio».";
-          btn.textContent = "Reto aceptado ✓";
-        } catch (err) {
-          $("#retoMsg").className = "err";
-          $("#retoMsg").textContent = err.message;
-          btn.disabled = false;
-        }
-      }
-      const logId = e.target.dataset && e.target.dataset.comp;
-      if (logId) {
-        e.target.disabled = true;
-        try {
-          await api("/api/diario/compartir/" + encodeURIComponent(logId), { usuario_id: session.id, compartir: true });
-          e.target.textContent = "✓ Compartida con tutoría";
-        } catch (err) { alert(err.message); e.target.disabled = false; }
-      }
-    };
-
-    /* ---------- Mi mes (copia local + servidor + control de privacidad) ---------- */
-    $("#leyenda").innerHTML = Object.keys(P).map(e => `<span><i class="dot" style="background:${P[e].acc}"></i>${e}</span>`).join("");
-    async function cargarHistorial() {
-      const k = "emoti_h_" + session.id;
-      try { pintar(JSON.parse(lget(k) || "[]"), true); } catch (e) { }
-      try {
-        const es = (await api("/api/diario/historial/" + encodeURIComponent(session.id))).entradas || [];
-        lset(k, JSON.stringify(es.slice(0, 300).map(x => ({ id: x.id, fecha: x.fecha, emocion: x.emocion, puntuacion: x.puntuacion })))); /* sin textos: tu diario no se guarda en el dispositivo */
-        pintar(es);
-      } catch (e) { if (!lget(k)) $("#lista").innerHTML = `<p class="err">${esc(e.message)}</p>`; }
-    }
-    function pintar(es, sinTexto) {
-      if (!es.length) { $("#mes").innerHTML = ""; $("#lista").innerHTML = '<p class="mut">Todavía no hay entradas. Cuando escribas la primera, tu mes empezará a colorearse.</p>'; return; }
-      const f = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-      const por = {}; es.forEach(x => { const d = String(x.fecha).slice(0, 10); if (!por[d]) por[d] = x.emocion; });
-      const hoy = new Date(), cel = [];
-      for (let i = 29; i >= 0; i--) { const d = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - i); cel.push({ k: f(d), n: d.getDate(), e: por[f(d)], w: d.getDay() }); }
-      const off = (cel[0].w + 6) % 7;
-      $("#mes").innerHTML = cel.map((c, i) => {
-        const st = (i === 0 ? `grid-column-start:${off + 1};` : "") + (c.e ? `background:${col(c.e)};` : "");
-        return `<div class="dia${c.e ? " on" : ""}" style="${st}" title="${esc(c.k + (c.e ? " · " + c.e : ""))}">${c.n}</div>`;
-      }).join("");
-      if (sinTexto) { $("#lista").innerHTML = '<div class="skel"></div>'; return; }
-      $("#lista").innerHTML = es.slice(0, 30).map(x => {
-        const comp = !!x.compartido_psicologa;
-        return `<div class="item"><i class="dot" style="background:${col(x.emocion)}"></i><div style="flex:1">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-            <small>${esc(x.fecha)} · ${esc(x.emocion)}</small>
-            ${x.id && x.id.length > 8 ? `<button type="button" class="ghost q" data-priv="${esc(x.id)}" data-st="${comp ? "1" : "0"}">${comp ? "✓ Compartido con tutoría" : "🔒 Privado · Compartir"}</button>` : ""}
-          </div>
-          <p>${esc(x.texto_original)}</p>
-        </div></div>`;
-      }).join("");
-    }
-
-    $("#lista").onclick = async e => {
-      const btn = e.target.closest("[data-priv]"); if (!btn) return;
-      const nuevoEstado = btn.dataset.st !== "1";
-      btn.disabled = true;
-      try {
-        await api("/api/diario/compartir/" + encodeURIComponent(btn.dataset.priv), { usuario_id: session.id, compartir: nuevoEstado });
-        btn.dataset.st = nuevoEstado ? "1" : "0";
-        btn.textContent = nuevoEstado ? "✓ Compartido con tutoría" : "🔒 Privado · Compartir";
-      } catch (err) { alert(err.message); }
-      btn.disabled = false;
-    };
-
-    /* ---------- Logros ---------- */
-    async function cargarLogros() {
-      const box = $("#logros"); box.innerHTML = '<div class="skel"></div>';
-      try {
-        const d = await api("/api/usuario/logros/" + encodeURIComponent(session.id));
-        box.innerHTML = `<p class="mut">Racha de ${esc(d.racha_actual)} días · ${esc(d.desbloqueados_conteo)} de ${esc(d.total_logros)} logros</p>
+/* ---------- Logros ---------- */
+async function cargarLogros() {
+  const box = $("#logros"); box.innerHTML = '<div class="skel"></div>';
+  try {
+    const d = await api("/api/usuario/logros/" + encodeURIComponent(session.id));
+    box.innerHTML = `<p class="mut">🔥 Racha: ${esc(d.racha_actual)} días · ${esc(d.desbloqueados_conteo)}/${esc(d.total_logros)} logros</p>
       <div class="grid">${(d.logros || []).map(l => `<div class="medal ${l.desbloqueado ? "" : "lock"}"><span>${esc(l.icono)}</span><b>${esc(l.titulo)}</b><small>${esc(l.descripcion)}</small></div>`).join("")}</div>
-      <p class="mut">${esc(d.proximo_logro && d.proximo_logro.leyenda)}</p>`;
-      } catch (e) { box.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
-    }
+      <p class="next">${esc(d.proximo_logro && d.proximo_logro.leyenda)}</p>`;
+  } catch (e) { box.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+}
 
-    /* ---------- Relax ---------- */
-    async function cargarRelax() {
-      if (!frases.length) { try { frases = (await api("/api/relax/frases")).frases || []; } catch (e) { } }
-      mostrarFrase();
-    }
-    function mostrarFrase() {
-      const f = frases.length ? frases[fi % frases.length] : null;
-      $("#frase").innerHTML = f ? `<p>“${esc(f.texto)}”</p><small>— ${esc(f.autor)}</small>` : "<p>Respira profundo…</p>";
-    }
-    $("#otra").onclick = () => { fi++; mostrarFrase(); };
-    let inh = true;
-    setInterval(() => { $("#resp").textContent = (inh = !inh) ? "Inhala" : "Exhala"; }, 4000);
+/* ---------- Relax ---------- */
+async function cargarRelax() {
+  if (!frases.length) { try { frases = (await api("/api/relax/frases")).frases || []; } catch (e) {} }
+  mostrarFrase();
+}
+function mostrarFrase() {
+  const f = frases.length ? frases[fi % frases.length] : null;
+  $("#frase").innerHTML = f ? `<p>“${esc(f.texto)}”</p><small>— ${esc(f.autor)}</small>` : "<p>Respira profundo…</p>";
+}
+$("#otra").onclick = () => { fi++; mostrarFrase(); };
+let inh = true;
+setInterval(() => { $("#resp").textContent = (inh = !inh) ? "Inhala" : "Exhala"; }, 4000);
 
-    /* ---------- Fondos ---------- */
-    const FONDOS = {
-      montanas: () => `<path d="M0 600V380L180 250 330 360 520 200 720 380 900 270 1200 420V600Z" opacity=".22"/><path d="M0 600V450L220 330 420 450 640 320 880 470 1050 380 1200 480V600Z" opacity=".34"/>`,
-      olas: () => `<path d="M0 420C200 360 400 480 600 420S1000 360 1200 420V600H0Z" opacity=".22"/><path d="M0 490C200 430 400 550 600 490S1000 430 1200 490V600H0Z" opacity=".34"/>`,
-      estrellas: () => Array.from({ length: 70 }, (_, i) => `<circle cx="${(i * 97) % 1200}" cy="${(i * 53) % 520}" r="${1 + i % 3}" opacity="${(.25 + (i % 5) / 10).toFixed(2)}"/>`).join(""),
-      bosque: () => [0, 1].map(r => Array.from({ length: 14 }, (_, i) => { const x = i * 90 + r * 45, y = 600 - r * 40, h = 130 + (i * 37 + r * 20) % 90; return `<path d="M${x} ${y}L${x + 45} ${y - h}L${x + 90} ${y}Z" opacity="${(.2 + r * .13).toFixed(2)}"/>`; }).join("")).join("")
-    };
-    function aplicarFondo() {
-      const f = lget("emoti_fondo") || "liso", el = $("#fondo"), img = lget("emoti_fondo_img");
-      if (f === "mia" && img) { el.style.backgroundImage = `url("${img}")`; el.style.opacity = .3; }
-      else if (FONDOS[f]) {
-        const a = getComputedStyle(document.body).getPropertyValue("--acc").trim() || "#e8772e";
-        el.style.backgroundImage = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMax slice" fill="${a}">${FONDOS[f]()}</svg>`)}")`;
-        el.style.opacity = 1;
-      } else el.style.backgroundImage = "none";
-      $("#fondoSel").value = f === "mia" && !img ? "liso" : f;
-    }
-    $("#fondoSel").onchange = e => {
-      const v = e.target.value;
-      if (v === "mia") { $("#fondoImg").click(); aplicarFondo(); return; }
-      lset("emoti_fondo", v); aplicarFondo();
-    };
-    $("#fondoImg").onchange = e => {
-      const file = e.target.files[0]; if (!file) return;
-      const im = new Image();
-      im.onload = () => {
-        const k = Math.min(1, 1280 / Math.max(im.width, im.height)), c = document.createElement("canvas");
-        c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
-        c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
-        try { localStorage.setItem("emoti_fondo_img", c.toDataURL("image/jpeg", .7)); lset("emoti_fondo", "mia"); }
-        catch (x) { alert("La imagen es muy pesada para guardarla en este dispositivo. Prueba con otra."); }
-        URL.revokeObjectURL(im.src); aplicarFondo();
-      };
-      im.src = URL.createObjectURL(file);
-      e.target.value = "";
-    };
-
-    /* ---------- Charla ---------- */
-    const AYUDA = "Si estás en peligro o piensas en hacerte daño, hay personas listas para escucharte ahora:\n• Línea de la Vida: 800 911 2000 (gratuita, 24 horas, todos los días)\n• Emergencias: 911\nY si puedes, avisa ahora mismo a alguien de confianza que esté cerca.";
-    const CRISIS = /suicid|quitarme la vida|quiero morir|me quiero morir|no quiero vivir|hacerme dano|lastimarme|matarme|acabar con todo|ya no quiero estar aqui|mejor muert/;
-    const BOT = [
-      [/ansied|ansios|nervios|panico|agobi|angusti|taquicardia|preocup|miedo|asust|inquiet/, [
-        "Eso se siente muy intenso, y va a pasar. Prueba esto: inhala por la nariz 4 segundos, suelta el aire despacio por la boca 6 segundos, y repítelo 5 veces. Si quieres, abre Relax y respiramos con el círculo.",
-        "La ansiedad hace que todo parezca urgente. Nombra 5 cosas que ves, 4 que puedes tocar, 3 que oyes, 2 que hueles y 1 que saboreas. Eso ayuda a volver al presente."]],
-      [/trist|deprim|llor|vacio|desanim|sin ganas/, [
-        "Gracias por decirlo. Estar triste no es una falla, es una señal de que algo te duele o te importa. Hoy basta con un paso pequeño: tomar agua, salir un momento a que te dé el aire, o escribir aquí cómo te sientes.",
-        "Lo que sientes es válido. Si puedes, cuéntale a alguien de confianza aunque sea una frase: no tienes que explicarlo todo. Y si esto dura varios días, hablarlo con la psicóloga puede aliviar mucho."]],
-      [/enoj|coraje|rabia|molest|frustra|harto|furios/, [
-        "El enojo suele avisar que algo cruzó un límite. Antes de reaccionar, respira hondo tres veces y mueve el cuerpo un minuto: camina, estira, sacude las manos. Después, escribirlo ayuda a ver qué hay detrás.",
-        "Está bien sentir coraje; lo que decides hacer con él sí puedes elegirlo. Date 10 minutos antes de responderle a alguien o de tomar una decisión."]],
-      [/estres|examen|tarea|presion|agotad|cansad|abrumad|trabajo/, [
-        "Cuando todo pesa a la vez, ayuda partirlo: elige una sola cosa, trabaja 25 minutos y descansa 5. Después de la primera ronda, decide la siguiente. No tienes que terminar todo hoy.",
-        "El cansancio también cuenta. Revisa lo básico: si dormiste, si comiste y si tomaste agua. Luego escribe tus pendientes y marca solo los 3 más importantes."]],
-      [/dormir|sueno|insomni|desvel|pesadilla/, [
-        "Para dormir mejor: baja las pantallas 30 minutos antes, mantén un horario parecido cada día y haz la respiración 4-6 acostado/a. Si te da vueltas la mente, anota los pendientes para dejarlos fuera de la cama.",
-        "Las noches difíciles pasan. Evita la cafeína por la tarde y, si en 20 minutos no te duermes, levántate un rato a hacer algo tranquilo. Si es seguido, vale la pena comentarlo con un profesional de la salud."]],
-      [/me siento sol[oa]|soledad|nadie me|aislad|sin amigos/, [
-        "Sentirse solo/a duele, y es más común de lo que parece. Un paso pequeño puede ser escribirle a una sola persona algo simple, como «¿cómo vas?». Aquí también puedes empezar a poner en palabras lo que sientes.",
-        "No estás haciendo nada mal por sentirte así. A veces la conexión empieza con algo mínimo: saludar, compartir un meme, sentarte cerca de alguien. ¿Hay alguien con quien te gustaría hablar más?"]],
-      [/no se que siento|confund|no se que me pasa/, [
-        "A veces no hay un nombre claro, y está bien. Pregúntate: ¿dónde lo siento en el cuerpo (pecho, estómago, hombros)? ¿Se parece más a pesadez, a presión o a inquietud? Ponerle forma ayuda; luego puedes escribirlo en tu diario y ver qué color toma tu día."]],
-      [/psicolog|terapia|profesional|hablar con alguien|miedo a ir|me da pena/, [
-        "Dar el primer paso cuesta, y es normal dudar. Una primera cita es solo una conversación: tú decides cuánto contar y a qué ritmo. Puedes llevar tu mes en colores para empezar desde ahí, y preguntar lo que te preocupa de ir. Cuando te sientas listo/a, será un paso tuyo, sin prisa.",
-        "Hablar con una psicóloga no significa que algo esté mal contigo; es un espacio para que alguien te escuche sin juzgar. Mientras tanto, seguir escribiendo aquí es una buena forma de ir preparando lo que quieras decir."]],
-      [/muri|falleci|perdi a|duelo|extrano a/, [
-        "Lo siento mucho. El duelo no tiene un tiempo correcto: extrañar, enojarte o sentir vacío son parte de despedirse. Si quieres, escribe aquí lo que sientes hoy y apóyate en alguien cercano; no tienes que cargarlo solo/a.",
-        "Perder a alguien importante pesa, y hay fechas en las que pesa más. Es válido tener días difíciles. Cuídate con lo básico y busca la compañía de alguien que te escuche."]],
-      [/respir/, ["Hagámoslo juntos: inhala 4 segundos, suelta 6 segundos, 5 veces. En la sección Relax hay un círculo que te marca el ritmo."]],
-      [/5.?4.?3|aterriz|presente/, ["Técnica 5-4-3-2-1: nombra 5 cosas que ves, 4 que puedes tocar, 3 que oyes, 2 que hueles y 1 que saboreas. Ve despacio, con cada una."]],
-      [/gracias/, ["Me alegra poder acompañarte. Aquí sigo cuando quieras."]],
-      [/\bhola\b|buenas|buenos dias/, ["Hola. ¿Cómo estás hoy? Puedes contarme o elegir un tema de abajo."]]
-    ];
-    function responder(t) {
-      const n = t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      if (CRISIS.test(n)) return { t: "Gracias por decírmelo, me importa cómo estás. Lo que describes es muy pesado y mereces apoyo de una persona real ahora mismo.\n\n" + AYUDA, sos: true };
-      for (const [re, rs] of BOT) if (re.test(n)) return { t: rs[Math.floor(Math.random() * rs.length)] };
-      return { t: "Todavía soy una guía sencilla y no conozco ese tema. Puedo acompañarte con ansiedad, tristeza, enojo, estrés, sueño, soledad, o con cómo hablar con la psicóloga. ¿Cuál se parece más a lo que vives?" };
-    }
-    function msg(t, c) { const d = document.createElement("div"); d.className = "msg " + c; d.textContent = t; $("#chat").appendChild(d); $("#chat").scrollTop = 1e6; }
-    function iniciarChat() { if (!$("#chat").children.length) msg("Hola, soy la guía de EmotiData. Puedo darte ideas sencillas para sentirte mejor. No soy una persona ni una terapeuta, y esta conversación no se guarda. ¿Qué está pasando?", "bot"); }
-    function hablar(t) { msg(t, "yo"); const r = responder(t); setTimeout(() => msg(r.t, "bot" + (r.sos ? " sos" : "")), 450); }
-    $("#chips").innerHTML = ["Tengo ansiedad", "Estoy triste", "Siento enojo", "Mucho estrés", "No puedo dormir", "Cómo hablar con la psicóloga"].map(x => `<button class="chip" type="button">${x}</button>`).join("");
-    $("#chips").onclick = e => { if (e.target.classList.contains("chip")) hablar(e.target.textContent); };
-    $("#fChat").onsubmit = e => { e.preventDefault(); const v = $("#tChat").value.trim(); if (v) { $("#tChat").value = ""; hablar(v); } };
-
-    /* ---------- Dictado por voz ---------- */
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SR) {
-      const m = $("#bMic"); let rec = null, fallo = false; m.hidden = false;
-      m.onclick = () => {
-        if (rec) { rec.stop(); return; }
-        rec = new SR(); rec.lang = "es-MX"; rec.continuous = true; rec.interimResults = false; fallo = false;
-        rec.onstart = () => { m.textContent = "Detener"; $("#micMsg").textContent = "Te escucho… revisa el texto antes de guardar."; };
-        rec.onresult = ev => { let t = ""; for (let i = ev.resultIndex; i < ev.results.length; i++) t += ev.results[i][0].transcript + " "; $("#texto").value = ($("#texto").value + " " + t).trim().slice(0, 1000); };
-        rec.onerror = () => { fallo = true; $("#micMsg").textContent = "No pude usar el micrófono."; };
-        rec.onend = () => { rec = null; m.textContent = "Dictar con mi voz"; if (!fallo) $("#micMsg").textContent = ""; };
-        rec.start();
-      };
-    }
-
-    /* ---------- Atrévete al cambio (Sincronizado con MongoDB Atlas) ---------- */
-    const TIPOS = { construir: "Construir", mejorar: "Mejorar", soltar: "Soltar y sustituir" };
-    const PH = { construir: "Ej.: 25 minutos de estudio sin celular", mejorar: "Ej.: Caminar 10 minutos", soltar: "Ej.: En lugar de abrir redes, respirar 3 veces" };
-    let CATALOGO_IDEAS = [
-      { tipo: "construir", titulo: "Estudiar sin distracciones", micro_accion: "25 minutos de estudio sin celular", emocion_trigger: "Neutral", duracion_dias: 20 },
-      { tipo: "construir", titulo: "Un buen momento al día", micro_accion: "Escribir una cosa buena del día", emocion_trigger: "Tristeza", duracion_dias: 14 },
-      { tipo: "construir", titulo: "Dormir mejor", micro_accion: "Apagar pantallas 30 minutos antes de dormir", emocion_trigger: "Miedo / Ansiedad", duracion_dias: 21 },
-      { tipo: "mejorar", titulo: "Moverme más", micro_accion: "Caminar 10 minutos", emocion_trigger: "Tristeza", duracion_dias: 14 },
-      { tipo: "mejorar", titulo: "Organizar mi día", micro_accion: "Elegir mis 3 pendientes más importantes", emocion_trigger: "Neutral", duracion_dias: 15 },
-      { tipo: "mejorar", titulo: "Calmar mi reacción", micro_accion: "Respirar 3 veces antes de responder", emocion_trigger: "Enojo", duracion_dias: 14 },
-      { tipo: "soltar", titulo: "Menos redes al bloquearme", micro_accion: "En lugar de abrir redes, caminar 10 minutos", emocion_trigger: "Enojo", duracion_dias: 15 },
-      { tipo: "soltar", titulo: "Menos postergar", micro_accion: "En lugar de dejarlo para después, avanzar 15 minutos", emocion_trigger: "Miedo / Ansiedad", duracion_dias: 20 }
-    ];
-
-    async function cargarCambio() {
-      const d = new Date(), n = d.getDate(), dim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-      $("#cMetas").innerHTML = '<div class="skel"></div>';
-      try {
-        const [resMetas, resCat] = await Promise.all([
-          api("/api/habitos/" + encodeURIComponent(session.id)),
-          api("/api/habitos/catalogo").catch(() => ({ catalogo: [] }))
-        ]);
-        if (resCat.catalogo && resCat.catalogo.length) CATALOGO_IDEAS = resCat.catalogo;
-
-        const ms = resMetas.metas || [];
-        const hechas = ms.filter(g => g.hecho_hoy).length;
-        $("#cHoy").innerHTML = ms.length ? `<div class="stat" style="margin-top:14px"><b>${hechas} de ${ms.length}</b><span class="mut">victorias de hoy</span></div>` : "";
-
-        $("#cMetas").innerHTML = ms.length
-          ? ms.map(g => {
-            const diasNums = new Set((g.dias_cumplidos || []).map(f => +String(f).slice(8, 10)));
-            return `<div class="meta"><div class="mh"><span class="tag">${TIPOS[g.tipo] || ""}</span><button class="ghost q" data-act="quitar" data-id="${esc(g.id)}">Quitar</button></div>
-              <h3 class="mt">${esc(g.titulo)}</h3><p class="mut">Cada día: ${esc(g.micro_accion)}</p>
-              <button class="btn${g.hecho_hoy ? " ok" : ""}" data-act="hoy" data-id="${esc(g.id)}">${g.hecho_hoy ? "Hecho hoy ✓" : "Hoy lo logré"}</button>
-              <div class="barra" role="progressbar" aria-valuenow="${g.porcentaje}" aria-valuemin="0" aria-valuemax="100"><i style="width:${g.porcentaje}%"></i></div>
-              <small>${diasNums.size} de ${g.meta_dias} días · racha de ${g.racha} ${g.racha === 1 ? "día" : "días"}${diasNums.size >= g.meta_dias ? " · ¡Meta cumplida!" : ""}</small>
-              <div class="pts">${Array.from({ length: dim }, (_, i) => `<i class="${diasNums.has(i + 1) ? "on" : ""}${i + 1 === n ? " hoy" : ""}" title="Día ${i + 1}"></i>`).join("")}</div>
-              <small>${esc(g.correlacion_animo)}</small></div>`;
-          }).join("") + (ms.length < 3 ? `<p class="mut">Con 3 a 5 metas tendrás un rumbo claro sin agotarte. Te faltan ${3 - ms.length}.</p>` : "")
-          : `<p class="mut">Todavía no tienes metas este mes. Elige una idea de abajo o crea la tuya.</p>` + (resMetas.tiene_previas ? `<button class="ghost" data-act="repetir">Repetir mis metas del mes pasado</button>` : "");
-
-        const em = lget("emoti_emo");
-        $("#cSug").textContent = em ? `Según cómo te has sentido (${em.toLowerCase()}), te sugerimos las marcadas.` : "";
-        $("#cIdeas").innerHTML = CATALOGO_IDEAS.map((x, i) => `<button class="chip${em && x.emocion_trigger === em ? " sug" : ""}" type="button" data-act="idea" data-i="${i}">${esc(x.titulo)}</button>`).join("");
-
-        const st = resMetas.stats_medallas || {};
-        const L = [
-          ["🌱", "Primer paso", "Creaste tu primera meta en tu cuenta.", (st.total_metas_historicas || 0) > 0],
-          ["🧭", "Rumbo claro", "Tienes de 3 a 5 metas este mes.", ms.length >= 3],
-          ["⚡", "Victoria diaria", "Cumpliste una micro-acción.", (st.total_victorias || 0) > 0],
-          ["🔥", "Constancia", "Sumaste 7 victorias en una misma meta.", !!st.alguna_7],
-          ["🏆", "Meta cumplida", "Alcanzaste los días que te propusiste.", !!st.alguna_cumplida],
-          ["🌟", "Mes de oro", "Cumpliste todas tus metas del mes.", !!st.mes_oro]
-        ];
-        const htmlMed = `<div class="grid">${L.map(l => `<div class="medal${l[3] ? "" : " lock"}"><span>${l[0]}</span><b>${l[1]}</b><small>${l[2]}</small></div>`).join("")}</div>`;
-        $("#cLogros").innerHTML = htmlMed;
-        $("#logrosCambio").innerHTML = htmlMed;
-      } catch (err) {
-        $("#cMetas").innerHTML = `<p class="err">${esc(err.message)}</p>`;
-      }
-    }
-
-    $("#v-cambio").onclick = async e => {
-      const b = e.target.closest("[data-act]"); if (!b) return;
-      const a = b.dataset.act;
-      b.disabled = true;
-      try {
-        if (a === "hoy") {
-          await api("/api/habitos/checkin", { meta_id: b.dataset.id, usuario_id: session.id });
-        } else if (a === "quitar") {
-          if (!confirm("¿Quitar esta meta y su progreso?")) { b.disabled = false; return; }
-          await api("/api/habitos/" + encodeURIComponent(b.dataset.id), null, "DELETE");
-        } else if (a === "idea") {
-          const x = CATALOGO_IDEAS[+b.dataset.i];
-          await api("/api/habitos/asignar", {
-            usuario_id: session.id,
-            reto_id: x.id,
-            tipo: x.tipo || "construir",
-            titulo: x.titulo,
-            micro_accion: x.micro_accion,
-            meta_dias: x.duracion_dias || 20
-          });
-        } else if (a === "repetir") {
-          await api("/api/habitos/repetir_mes_anterior", { usuario_id: session.id });
-        }
-        await cargarCambio();
-      } catch (err) {
-        alert(err.message);
-        b.disabled = false;
-      }
-    };
-
-    $("#fCambio").onsubmit = async e => {
-      e.preventDefault();
-      const t = $("#cTitulo").value.trim(), micro = $("#cMicro").value.trim(); if (!t || !micro) return;
-      try {
-        await api("/api/habitos/asignar", {
-          usuario_id: session.id,
-          tipo: $("#cTipo").value,
-          titulo: t,
-          micro_accion: micro,
-          meta_dias: Math.max(5, Math.min(31, +$("#cMeta").value || 20))
-        });
-        e.target.reset(); $("#cMicro").placeholder = PH.construir; $("#cNueva").open = false;
-        await cargarCambio();
-      } catch (err) { alert(err.message); }
-    };
-    $("#cTipo").onchange = e => { $("#cMicro").placeholder = PH[e.target.value]; };
-
-    /* =================================================================
-       PANEL DE LA PSICÓLOGA / TUTORÍA
-       ================================================================= */
-    async function cargarPanelPsicologa() {
-      $("#pListaEst").innerHTML = '<div class="skel"></div>';
-      try {
-        const d = await api("/api/psicologa/estudiantes");
-        listaEstCache = d.estudiantes || [];
-        const alertas = listaEstCache.filter(x => x.alerta).length;
-        const pg = d.precision_global || {};
-        $("#pKpis").innerHTML = `
-          <div class="stat"><b>${listaEstCache.length}</b><span class="mut">estudiantes activos</span></div>
-          <div class="stat"><b>${alertas}</b><span class="mut">alertas preventivas</span></div>
-          <div class="stat"><b>${pg.porcentaje !== null && pg.porcentaje !== undefined ? pg.porcentaje + "%" : "Sin evaluar"}</b><span class="mut">precisión global (${pg.evaluadas || 0} eval.)</span></div>`;
-        renderListaEstudiantes("");
-      } catch (err) {
-        $("#pListaEst").innerHTML = `<p class="err">${esc(err.message)}</p>`;
-      }
-    }
-
-    function renderListaEstudiantes(filtro) {
-      const q = filtro.toLowerCase().trim();
-      const filtrados = listaEstCache.filter(e =>
-        e.nombre.toLowerCase().includes(q) || e.correo.toLowerCase().includes(q) || e.matricula.toLowerCase().includes(q)
-      );
-      $("#pListaEst").innerHTML = filtrados.length
-        ? filtrados.map(e => `
-          <div class="estCard${estSelId === e.id ? " sel" : ""}" data-est="${esc(e.id)}">
-            <div>
-              <b>${esc(e.nombre)}</b>
-              <div style="font-size:.88rem" class="mut">${esc(e.correo)}${e.matricula ? " · Mat. " + esc(e.matricula) : ""} · ${e.total_registros} registros · ${e.metas_activas} hábitos</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px">
-              <small><i class="dot" style="background:${col(e.ultima_emocion)};margin:0 6px 1px 0"></i>${esc(e.ultima_emocion)} (${esc(e.fecha_ultima)})</small>
-              <span class="badge ${e.alerta ? "alerta" : "estable"}">${e.alerta ? "Atención" : "Estable"}</span>
-            </div>
-          </div>`).join("")
-        : '<p class="mut">No se encontraron estudiantes con ese criterio.</p>';
-    }
-
-    $("#pBuscar").oninput = e => renderListaEstudiantes(e.target.value);
-    $("#pListaEst").onclick = e => {
-      const card = e.target.closest("[data-est]");
-      if (card) cargarEstudioEstudiante(card.dataset.est);
-    };
-
-    async function cargarEstudioEstudiante(usuarioId, mes) {
-      estSelId = usuarioId;
-      renderListaEstudiantes($("#pBuscar").value);
-      const det = $("#pDetalle"); det.hidden = false;
-      $("#pChartDist").innerHTML = '<div class="skel"></div>';
-      try {
-        const url = "/api/psicologa/estudio/" + encodeURIComponent(usuarioId) + (mes ? "?mes=" + encodeURIComponent(mes) : "");
-        const d = await api(url);
-        $("#pEstNombre").textContent = d.estudiante.nombre;
-        $("#pEstInfo").textContent = `${d.estudiante.correo}${d.estudiante.matricula ? " · Matrícula: " + d.estudiante.matricula : ""}${d.estudiante.carrera ? " · " + d.estudiante.carrera : ""}`;
-
-        $("#pMesSel").innerHTML = (d.meses_disponibles || []).map(m => `<option value="${esc(m)}"${m === d.mes ? " selected" : ""}>${esc(m)}</option>`).join("");
-
-        const pa = d.precision_alumno || {};
-        $("#pEstStats").innerHTML = `
-          <div class="stat"><b>${d.resumen.total_entradas}</b><span class="mut">registros en ${esc(d.mes)}</span></div>
-          <div class="stat"><b>${d.resumen.promedio_puntuacion}</b><span class="mut">índice promedio (−1 a +1)</span></div>
-          <div class="stat"><b>${esc(d.resumen.nivel_alerta)}</b><span class="mut">nivel de alerta</span></div>
-          <div class="stat"><b>${pa.porcentaje !== null && pa.porcentaje !== undefined ? pa.porcentaje + "%" : "—"}</b><span class="mut">precisión en alumno</span></div>`;
-
-        // Gráfica 1: Barras de distribución emocional del mes
-        $("#pChartDist").innerHTML = (d.distribucion || []).map(item => `
-          <div class="barRow">
-            <span><i class="dot" style="background:${col(item.emocion)};margin:0 6px 1px 0"></i>${esc(item.emocion)}</span>
-            <div class="barra"><i style="width:${item.porcentaje}%;background:${col(item.emocion)}"></i></div>
-            <small>${item.conteo} (${item.porcentaje}%)</small>
-          </div>`).join("");
-
-        // Gráfica 2: Evolución diaria SVG + Calendario mensual de colores
-        const serie = d.serie_diaria || [];
-        const puntosConDato = serie.filter(s => s.puntuacion !== null);
-        if (puntosConDato.length) {
-          const W = 680, H = 160, pad = 24;
-          const xPos = dia => pad + ((dia - 1) / Math.max(1, serie.length - 1)) * (W - pad * 2);
-          const yPos = val => (H / 2) - (val * ((H / 2) - pad));
-          const poly = puntosConDato.map(s => `${xPos(s.dia).toFixed(1)},${yPos(s.puntuacion).toFixed(1)}`).join(" ");
-          const circles = puntosConDato.map(s =>
-            `<circle cx="${xPos(s.dia).toFixed(1)}" cy="${yPos(s.puntuacion).toFixed(1)}" r="4.5" fill="${col(s.emocion)}"><title>Día ${s.dia}: ${s.emocion} (${s.puntuacion})</title></circle>`
-          ).join("");
-          $("#pChartLinea").innerHTML = `
-            <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="Evolución emocional diaria">
-              <line x1="${pad}" y1="${H / 2}" x2="${W - pad}" y2="${H / 2}" stroke="currentColor" stroke-opacity=".22" stroke-dasharray="4 4"/>
-              <text x="4" y="16" fill="currentColor" opacity=".55" font-size="10">+1.0</text>
-              <text x="4" y="${H / 2 + 4}" fill="currentColor" opacity=".55" font-size="10">0.0</text>
-              <text x="4" y="${H - 6}" fill="currentColor" opacity=".55" font-size="10">-1.0</text>
-              <polyline fill="none" stroke="var(--acc)" stroke-width="2.5" points="${poly}"/>
-              ${circles}
-            </svg>`;
-        } else {
-          $("#pChartLinea").innerHTML = '<p class="mut">Sin registros en este mes para trazar la curva diaria.</p>';
-        }
-
-        $("#pMesGrid").innerHTML = serie.map(c =>
-          `<div class="dia${c.emocion ? " on" : ""}" style="${c.emocion ? `background:${col(c.emocion)};` : ""}" title="${esc(c.fecha + (c.emocion ? " · " + c.emocion + " (" + c.puntuacion + ")" : ""))}">${c.dia}</div>`
-        ).join("");
-
-        // Hábitos activos del alumno
-        const habs = d.habitos || [];
-        $("#pHabitos").innerHTML = habs.length
-          ? habs.map(h => `<div class="meta"><div class="mh"><b>${esc(h.titulo)}</b><span class="tag">${esc(h.tipo)}</span></div>
-              <small>Micro-acción: ${esc(h.micro_accion)} · Avance: ${h.cumplidos}/${h.meta_dias} días (${h.porcentaje}%)</small>
-              <div class="barra"><i style="width:${h.porcentaje}%"></i></div></div>`).join("")
-          : '<p class="mut">El estudiante aún no tiene hábitos registrados en este mes.</p>';
-
-        // Recomendaciones generadas y auditoría de precisión
-        const recs = d.recomendaciones || [];
-        $("#pRecs").innerHTML = recs.length
-          ? recs.map(r => {
-            const reto = r.reto_sugerido || {};
-            const p = r.precision_psicologa;
-            return `<div class="item"><i class="dot" style="background:${col(r.emocion)}"></i><div style="flex:1;display:grid;gap:6px">
-              <small>${esc(r.fecha)} · Emoción detectada: <b>${esc(r.emocion)}</b> (índice ${r.puntuacion})</small>
-              <p><b>Respuesta empática enviada:</b> ${esc(r.respuesta_enviada)}</p>
-              <small><b>Reto vinculado:</b> ${esc(reto.titulo || "")} — ${esc(reto.micro_accion || "")}</small>
-              ${r.compartido_psicologa && r.texto_compartido ? `<div class="reply"><small>Escrito autorizado por el alumno:</small><p>${esc(r.texto_compartido)}</p></div>` : `<small class="mut">🔒 Texto del diario privado (no autorizado para lectura)</small>`}
-              <div class="evalRow">
-                <small>¿Recomendación precisa?</small>
-                <button type="button" class="ghost q${p === "precisa" ? " onPrec" : ""}" data-eval="${esc(r.id)}" data-val="precisa">✓ Precisa</button>
-                <button type="button" class="ghost q${p === "no_precisa" ? " onNoPrec" : ""}" data-eval="${esc(r.id)}" data-val="no_precisa">✕ No precisa</button>
-              </div>
-            </div></div>`;
-          }).join("")
-          : '<p class="mut">No hay recomendaciones generadas en este mes.</p>';
-
-        // Notas clínicas
-        const notas = d.notas_clinicas || [];
-        $("#pNotasLista").innerHTML = notas.length
-          ? notas.map(n => `<div class="item"><div><small>${esc(n.fecha)} · ${esc(n.autor)}</small><p>${esc(n.nota)}</p></div></div>`).join("")
-          : '<p class="mut">Aún no hay notas clínicas registradas para este estudiante.</p>';
-
-        det.scrollIntoView({ behavior: "smooth", block: "start" });
-      } catch (err) {
-        $("#pChartDist").innerHTML = `<p class="err">${esc(err.message)}</p>`;
-      }
-    }
-
-    $("#pMesSel").onchange = e => { if (estSelId) cargarEstudioEstudiante(estSelId, e.target.value); };
-
-    $("#pRecs").onclick = async e => {
-      const btn = e.target.closest("[data-eval]"); if (!btn) return;
-      btn.disabled = true;
-      try {
-        await api("/api/psicologa/evaluar_precision", {
-          log_id: btn.dataset.eval,
-          precision: btn.dataset.val,
-          psicologa_id: session.id
-        });
-        await cargarPanelPsicologa();
-        await cargarEstudioEstudiante(estSelId, $("#pMesSel").value);
-      } catch (err) { alert(err.message); btn.disabled = false; }
-    };
-
-    $("#fNotaPsico").onsubmit = async e => {
-      e.preventDefault();
-      if (!estSelId) return;
-      const nota = $("#tNotaPsico").value.trim(), msgEl = $("#msgNotaPsico");
-      if (!nota) return;
-      $("#bGuardarNota").disabled = true;
-      try {
-        const d = await api("/api/psicologa/notas", {
-          usuario_id: estSelId,
-          nota,
-          psicologa_id: session.id,
-          autor: session.nombre
-        });
-        $("#tNotaPsico").value = "";
-        msgEl.className = "okmsg"; msgEl.textContent = d.mensaje;
-        await cargarEstudioEstudiante(estSelId, $("#pMesSel").value);
-      } catch (err) { msgEl.className = "err"; msgEl.textContent = err.message; }
-      $("#bGuardarNota").disabled = false;
-    };
-
-    $("#fRegEst").onsubmit = async e => {
-      e.preventDefault();
-      const msgEl = $("#reMsg"), btn = $("#bRegEst");
-      btn.disabled = true; msgEl.textContent = "Registrando…";
-      try {
-        const d = await api("/api/psicologa/registrar_estudiante", {
-          nombre_completo: $("#reNombre").value.trim(),
-          correo: $("#reCorreo").value.trim(),
-          matricula: $("#reMat").value.trim(),
-          carrera: $("#reCarrera").value.trim(),
-          password: $("#rePass").value
-        });
-        msgEl.className = "okmsg"; msgEl.textContent = "✓ " + d.mensaje + " (ID: " + d.id + ")";
-        e.target.reset();
-        cargarPanelPsicologa();
-      } catch (err) { msgEl.className = "err"; msgEl.textContent = err.message; }
-      btn.disabled = false;
-    };
-
-    /* ---------- Lectura cómoda y bienvenida ---------- */
-    const SANS = 'system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif', VERD = 'Verdana,Tahoma,"Trebuchet MS",sans-serif';
-    const FUENTES = { comoda: [SANS, 'Georgia,"Iowan Old Style","Palatino Linotype",serif', "0"], facil: [VERD, VERD, ".02em"], sans: [SANS, SANS, "0"] };
-    function aplicarLectura() {
-      const z = lget("emoti_z") || "1", fu = lget("emoti_fuente") || "comoda", f = FUENTES[fu] || FUENTES.comoda, r = document.documentElement.style;
-      r.setProperty("--zoomT", z); r.setProperty("--fb", f[0]); r.setProperty("--fh", f[1]); r.setProperty("--ls", f[2]);
-      document.querySelectorAll("#tam button").forEach(b => b.classList.toggle("on", b.dataset.z === z));
-      $("#fuenteSel").value = fu;
-    }
-    $("#tam").onclick = e => { const z = e.target.dataset && e.target.dataset.z; if (z) { lset("emoti_z", z); aplicarLectura(); } };
-    $("#fuenteSel").onchange = e => { lset("emoti_fuente", e.target.value); aplicarLectura(); };
-    function abrir(id) { const d = $(id); if (d.open) return; if (d.showModal) d.showModal(); else d.setAttribute("open", ""); }
-    ["#bAj", "#bAj2", "#bAjP"].forEach(b => $(b).onclick = () => abrir("#dAj"));
-    ["#bBienv", "#bBienv2"].forEach(b => $(b).onclick = () => { if ($("#dAj").open) $("#dAj").close(); abrir("#dBienv"); });
-
-    /* ---------- Arranque ---------- */
-    document.querySelectorAll("#navEst button").forEach(b => b.onclick = () => show(b.dataset.v));
-    document.querySelectorAll("#navPsico button").forEach(b => b.onclick = () => showPsico(b.dataset.vp));
-    $("#salir").onclick = salir;
-    $("#salirP").onclick = salir;
-    aplicarTema();
-    aplicarLectura();
-    despertar();
-    setInterval(() => { if (!document.hidden) despertar(); }, 600000);
-    cargarConfigAuth();
-    procesarEnlace();
-    if (session && session.id) entrar(); else $("#login").hidden = false;
-  </script>
+/* ---------- Arranque ---------- */
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => show(b.dataset.v));
+$("#salir").onclick = salir;
+despertar();
+if (session && session.id) entrar(); else $("#login").hidden = false;
+</script>
 </body>
-
 </html>
