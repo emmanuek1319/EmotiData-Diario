@@ -1,3 +1,4 @@
+import calendar
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 from pymongo import MongoClient, DESCENDING
@@ -452,111 +453,84 @@ def obtener_metas_habitos(usuario_id):
     _x = propio(usuario_id)
     if _x:
         return _x
-    mes_actual = ahora_mx().strftime("%Y-%m")
-    hoy_str = ahora_mx().strftime("%Y-%m-%d")
+    ahora = ahora_mx()
+    mes_actual = ahora.strftime("%Y-%m")
+    hoy_str = ahora.strftime("%Y-%m-%d")
+    restantes = calendar.monthrange(ahora.year, ahora.month)[1] - ahora.day + 1
     try:
-        marca = db.usuarios.update_one({"_id": usuario_id, "habitos_iniciados": {"$ne": True}}, {"$set": {"habitos_iniciados": True}})
-        if marca.modified_count == 1 and db.metas_habitos.count_documents({"usuario_id": usuario_id}) == 0:
-            iniciales = []
-            for tipo in ("construir", "mejorar", "soltar"):
-                cand = list(db.retos_catalogo.find({"tipo": tipo, "activo": {"$ne": False}}))
-                if cand:
+        if restantes >= 7:  # a fin de mes no se sugieren metas que ya no alcanzan a cumplirse
+            marca = db.usuarios.update_one({"_id": usuario_id, "habitos_iniciados": {"$ne": True}}, {"$set": {"habitos_iniciados": True}})
+            if marca.modified_count == 1 and db.metas_habitos.count_documents({"usuario_id": usuario_id}) == 0:
+                for tipo in ("construir", "mejorar", "soltar"):
+                    cand = list(db.retos_catalogo.find({"tipo": tipo, "activo": {"$ne": False}}))
+                    if not cand:
+                        continue
                     r = random.choice(cand)
-                    iniciales.append({
-                        "usuario_id": usuario_id,
-                        "reto_origen_id": str(r["_id"]),
-                        "tipo": tipo,
-                        "titulo": r.get("titulo", ""),
-                        "micro_accion": r.get("micro_accion", ""),
-                        "mes": mes_actual,
-                        "meta_dias": a_entero(r.get("duracion_dias"), 20),
-                        "dias_cumplidos": [],
-                        "estado": "activo",
-                        "fecha_creacion": ahora_mx().strftime("%Y-%m-%d %H:%M:%S")
-                    })
-            if iniciales:
-                db.metas_habitos.insert_many(iniciales)
+                    try:
+                        db.metas_habitos.insert_one({
+                            "usuario_id": usuario_id, "reto_origen_id": str(r["_id"]), "tipo": tipo, "titulo": r.get("titulo", ""),
+                            "micro_accion": r.get("micro_accion", ""), "mes": mes_actual, "origen": "sugerida",
+                            "meta_dias": max(5, min(a_entero(r.get("duracion_dias"), 20), restantes)),
+                            "dias_cumplidos": [], "estado": "activo", "fecha_creacion": ahora.strftime("%Y-%m-%d %H:%M:%S")
+                        })
+                    except DuplicateKeyError:
+                        pass
 
-        metas_db = list(db.metas_habitos.find({
-            "usuario_id": usuario_id,
-            "mes": mes_actual,
-            "estado": "activo"
-        }))
+        metas_db = list(db.metas_habitos.find({"usuario_id": usuario_id, "mes": mes_actual, "estado": "activo"}))
+        todas_metas = list(db.metas_habitos.find({"usuario_id": usuario_id, "estado": {"$ne": "eliminada"}}))
+        por_titulo = {}
+        for x in todas_metas:  # la racha de un hábito continúa aunque cambie el mes
+            por_titulo.setdefault(str(x.get("titulo", "")).strip().lower(), set()).update(a_lista(x.get("dias_cumplidos")))
 
-        logs_mes = list(db.diario_logs.find({
-            "usuario_id": usuario_id,
-            "fecha": {"$regex": f"^{mes_actual}"}
-        }))
         punt_por_dia = {}
-        for l in logs_mes:
-            dia_f = str(l.get("fecha", ""))[:10]
-            punt_por_dia.setdefault(dia_f, []).append(a_flotante(l.get("puntuacion"), 0.0))
+        for l in db.diario_logs.find({"usuario_id": usuario_id, "fecha": {"$regex": f"^{mes_actual}"}}):
+            punt_por_dia.setdefault(str(l.get("fecha", ""))[:10], []).append(a_flotante(l.get("puntuacion"), 0.0))
 
+        elegida = lambda x: x.get("origen") != "sugerida" or len(a_lista(x.get("dias_cumplidos"))) > 0
         lista_metas = []
         for m in metas_db:
-            dias = sorted(list(set(a_lista(m.get("dias_cumplidos")))))
+            dias = sorted(set(a_lista(m.get("dias_cumplidos"))))
             meta_dias = a_entero(m.get("meta_dias"), 20)
             porcentaje = min(100, round((len(dias) / max(1, meta_dias)) * 100))
-
-            racha = 0
-            cursor = ahora_mx().date()
-            if cursor.strftime("%Y-%m-%d") not in dias:
+            serie = por_titulo.get(str(m.get("titulo", "")).strip().lower()) or set(dias)
+            racha, cursor = 0, ahora.date()
+            if cursor.strftime("%Y-%m-%d") not in serie:
                 cursor -= timedelta(days=1)
-            while cursor.strftime("%Y-%m-%d") in dias:
+            while cursor.strftime("%Y-%m-%d") in serie:
                 racha += 1
                 cursor -= timedelta(days=1)
 
-            si_cumplio, no_cumplio = [], []
-            for dia_f, punts in punt_por_dia.items():
-                prom = sum(punts) / len(punts)
-                if dia_f in dias:
-                    si_cumplio.append(prom)
-                else:
-                    no_cumplio.append(prom)
-
-            if len(si_cumplio) >= 3 and len(no_cumplio) >= 3:
+            si_cumplio = [sum(p) / len(p) for d, p in punt_por_dia.items() if d in dias]
+            no_cumplio = [sum(p) / len(p) for d, p in punt_por_dia.items() if d not in dias]
+            if len(si_cumplio) >= 5 and len(no_cumplio) >= 5:
                 p_si = round(((sum(si_cumplio) / len(si_cumplio)) + 1) * 50)
                 p_no = round(((sum(no_cumplio) / len(no_cumplio)) + 1) * 50)
-                pista = f"Los días que cumples esta meta, tu bienestar promedia {p_si}/100 frente a {p_no}/100 los días que no."
+                if p_si >= p_no + 5:
+                    pista = f"Los días que cumples esta meta, tu ánimo registrado tiende a ser más alto ({p_si}/100 frente a {p_no}/100). Es una pista, no una prueba."
+                else:
+                    pista = "Aún no se ve una relación clara con tu ánimo, y eso también es información. Sigue registrando."
             else:
-                pista = "Sigue registrando tu ánimo y tus victorias diarias para descubrir cómo este hábito impacta tu bienestar."
+                pista = "Sigue registrando tu ánimo y tus victorias diarias: con unos días más verás cómo este hábito se relaciona con tu bienestar."
 
             lista_metas.append({
-                "id": str(m["_id"]),
-                "tipo": m.get("tipo", "construir"),
-                "titulo": m.get("titulo", ""),
-                "micro_accion": m.get("micro_accion", ""),
-                "mes": m.get("mes", mes_actual),
-                "meta_dias": meta_dias,
-                "dias_cumplidos": dias,
-                "hecho_hoy": hoy_str in dias,
-                "porcentaje": porcentaje,
-                "racha": racha,
-                "correlacion_animo": pista
+                "id": str(m["_id"]), "tipo": m.get("tipo", "construir"), "titulo": m.get("titulo", ""), "micro_accion": m.get("micro_accion", ""),
+                "mes": m.get("mes", mes_actual), "meta_dias": meta_dias, "dias_cumplidos": dias, "hecho_hoy": hoy_str in dias,
+                "porcentaje": porcentaje, "racha": racha, "correlacion_animo": pista, "origen": m.get("origen", "propia")
             })
 
-        todas_metas = list(db.metas_habitos.find({"usuario_id": usuario_id, "estado": {"$ne": "eliminada"}}))
-        total_victorias = sum(len(a_lista(x.get("dias_cumplidos"))) for x in todas_metas)
-        alguna_7 = any(len(a_lista(x.get("dias_cumplidos"))) >= 7 for x in todas_metas)
-        alguna_cumplida = any(len(a_lista(x.get("dias_cumplidos"))) >= a_entero(x.get("meta_dias"), 20) for x in todas_metas)
-        mes_oro = len(lista_metas) >= 3 and all(x["porcentaje"] >= 100 for x in lista_metas)
-
-        previas_count = db.metas_habitos.count_documents({
-            "usuario_id": usuario_id,
-            "mes": {"$ne": mes_actual},
-            "estado": "activo"
-        })
-
+        elegidas = [x for x in todas_metas if elegida(x)]
+        elegidas_mes = [m for m in metas_db if elegida(m)]
+        rumbo_claro = len(elegidas_mes) >= 3
+        previas_count = db.metas_habitos.count_documents({"usuario_id": usuario_id, "mes": {"$ne": mes_actual}, "estado": "activo"})
         return jsonify({
-            "mes": mes_actual,
-            "metas": lista_metas,
-            "tiene_previas": previas_count > 0,
+            "mes": mes_actual, "metas": lista_metas, "tiene_previas": previas_count > 0, "dias_restantes": restantes,
             "stats_medallas": {
-                "total_metas_historicas": len(todas_metas),
-                "total_victorias": total_victorias,
-                "alguna_7": alguna_7,
-                "alguna_cumplida": alguna_cumplida,
-                "mes_oro": mes_oro
+                "total_metas_historicas": len(elegidas),
+                "total_victorias": sum(len(a_lista(x.get("dias_cumplidos"))) for x in elegidas),
+                "alguna_7": any(len(a_lista(x.get("dias_cumplidos"))) >= 7 for x in elegidas),
+                "alguna_cumplida": any(len(a_lista(x.get("dias_cumplidos"))) >= a_entero(x.get("meta_dias"), 20) for x in elegidas),
+                "rumbo_claro": rumbo_claro,
+                "mes_oro": rumbo_claro and len(lista_metas) >= 3 and all(x["porcentaje"] >= 100 for x in lista_metas)
             }
         }), 200
     except Exception as e:
@@ -566,34 +540,33 @@ def obtener_metas_habitos(usuario_id):
 @app.route('/api/habitos/asignar', methods=['POST'], strict_slashes=False)
 @requiere_sesion
 def asignar_meta_habito():
-    data = request.json or {}
-    usuario_id = g.uid
+    data = request.get_json(silent=True) or {}
     titulo = emoti_auth.limpiar(data.get("titulo"), 80)
     micro_accion = emoti_auth.limpiar(data.get("micro_accion"), 160)
-
-    if not usuario_id or not titulo or not micro_accion:
-        return jsonify({"error": "Faltan datos obligatorios (usuario_id, titulo, micro_accion)."}), 400
-
-    mes_actual = ahora_mx().strftime("%Y-%m")
+    if not titulo or not micro_accion:
+        return jsonify({"error": "Escribe el nombre de la meta y la acción de cada día."}), 400
+    ahora = ahora_mx()
+    mes_actual = ahora.strftime("%Y-%m")
+    restantes = calendar.monthrange(ahora.year, ahora.month)[1] - ahora.day + 1
+    reto_id = data.get("reto_id") if isinstance(data.get("reto_id"), str) and len(data.get("reto_id")) <= 40 else None
+    filtro = {"usuario_id": g.uid, "mes": mes_actual, "estado": "activo"}
     try:
-        activas = db.metas_habitos.count_documents({"usuario_id": usuario_id, "mes": mes_actual, "estado": "activo"})
-        if activas >= 5:
+        if db.metas_habitos.count_documents(filtro) >= 5:
             return jsonify({"error": "Ya tienes 5 metas activas este mes. Quita una antes de agregar otra."}), 400
-
-        nueva_meta = {
-            "usuario_id": usuario_id,
-            "reto_origen_id": data.get("reto_id"),
-            "tipo": data.get("tipo") if data.get("tipo") in ("construir", "mejorar", "soltar") else "construir",
-            "titulo": titulo,
-            "micro_accion": micro_accion,
-            "mes": mes_actual,
-            "meta_dias": max(5, min(31, a_entero(data.get("meta_dias"), 20))),
-            "dias_cumplidos": [],
-            "estado": "activo",
-            "fecha_creacion": ahora_mx().strftime("%Y-%m-%d %H:%M:%S")
-        }
-        res = db.metas_habitos.insert_one(nueva_meta)
-        return jsonify({"mensaje": "Meta de hábito guardada en tu cuenta", "id": str(res.inserted_id)}), 201
+        meta_dias = min(max(5, min(31, a_entero(data.get("meta_dias"), 20))), restantes)  # nunca más días de los que quedan en el mes
+        try:
+            res = db.metas_habitos.insert_one({
+                "usuario_id": g.uid, "reto_origen_id": reto_id, "origen": "propia",
+                "tipo": data.get("tipo") if data.get("tipo") in ("construir", "mejorar", "soltar") else "construir",
+                "titulo": titulo, "micro_accion": micro_accion, "mes": mes_actual, "meta_dias": meta_dias,
+                "dias_cumplidos": [], "estado": "activo", "fecha_creacion": ahora.strftime("%Y-%m-%d %H:%M:%S")
+            })
+        except DuplicateKeyError:
+            return jsonify({"error": "Ya tienes una meta con ese nombre este mes. Elige otro nombre."}), 409
+        if db.metas_habitos.count_documents(filtro) > 5:  # llegaron varias peticiones a la vez
+            db.metas_habitos.delete_one({"_id": res.inserted_id})
+            return jsonify({"error": "Ya tienes 5 metas activas este mes. Quita una antes de agregar otra."}), 400
+        return jsonify({"mensaje": "Meta de hábito guardada en tu cuenta", "id": str(res.inserted_id), "meta_dias": meta_dias}), 201
     except Exception as e:
         return error_interno(e)
 
@@ -602,6 +575,7 @@ def asignar_meta_habito():
 @requiere_sesion
 def repetir_metas_mes_anterior():
     mes_actual = ahora_mx().strftime("%Y-%m")
+    restantes = calendar.monthrange(ahora_mx().year, ahora_mx().month)[1] - ahora_mx().day + 1
     try:
         previo = db.metas_habitos.find_one({"usuario_id": g.uid, "mes": {"$lt": mes_actual}, "estado": "activo"}, sort=[("mes", DESCENDING)])
         if not previo:
@@ -619,7 +593,7 @@ def repetir_metas_mes_anterior():
             try:
                 db.metas_habitos.insert_one({
                     "usuario_id": g.uid, "tipo": p.get("tipo", "construir"), "titulo": titulo,
-                    "micro_accion": p.get("micro_accion", ""), "mes": mes_actual, "meta_dias": a_entero(p.get("meta_dias"), 20),
+                    "micro_accion": p.get("micro_accion", ""), "mes": mes_actual, "origen": "propia", "meta_dias": max(1, min(a_entero(p.get("meta_dias"), 20), restantes)),
                     "dias_cumplidos": [], "estado": "activo", "fecha_creacion": ahora_mx().strftime("%Y-%m-%d %H:%M:%S")
                 })
                 ya.add(titulo.lower())
@@ -634,27 +608,24 @@ def repetir_metas_mes_anterior():
 @app.route('/api/habitos/checkin', methods=['POST'], strict_slashes=False)
 @requiere_sesion
 def checkin_meta_habito():
-    data = request.json or {}
+    data = request.get_json(silent=True) or {}
     meta_id = data.get("meta_id")
-    usuario_id = g.uid
-    fecha_dia = emoti_auth.dia_valido(data.get("fecha"))
-
-    if not meta_id or not usuario_id:
-        return jsonify({"error": "Se requiere meta_id y usuario_id."}), 400
-
+    if not meta_id:
+        return jsonify({"error": "Falta indicar la meta."}), 400
+    if data.get("fecha") is None:
+        fecha_dia = ahora_mx().strftime("%Y-%m-%d")
+    else:
+        fecha_dia = emoti_auth.dia_estricto(data.get("fecha"))
+        if not fecha_dia:
+            return jsonify({"error": "La fecha no es válida: solo puedes marcar hoy o hasta 7 días atrás."}), 400
     try:
-        meta = db.metas_habitos.find_one({"_id": ObjectId(meta_id), "usuario_id": usuario_id})
+        meta = db.metas_habitos.find_one({"_id": ObjectId(meta_id), "usuario_id": g.uid, "estado": "activo"})
         if not meta:
             return jsonify({"error": "Meta no encontrada."}), 404
-
-        dias = a_lista(meta.get("dias_cumplidos"))
-        if fecha_dia in dias:
-            db.metas_habitos.update_one({"_id": ObjectId(meta_id)}, {"$pull": {"dias_cumplidos": fecha_dia}})
-            hecho = False
-        else:
-            db.metas_habitos.update_one({"_id": ObjectId(meta_id)}, {"$addToSet": {"dias_cumplidos": fecha_dia}})
-            hecho = True
-
+        if str(meta.get("mes")) != fecha_dia[:7]:
+            return jsonify({"error": "Esta meta es de otro mes: solo puedes marcar los días de su mes."}), 400
+        hecho = data.get("hecho") if isinstance(data.get("hecho"), bool) else fecha_dia not in a_lista(meta.get("dias_cumplidos"))
+        db.metas_habitos.update_one({"_id": meta["_id"]}, {"$addToSet": {"dias_cumplidos": fecha_dia}} if hecho else {"$pull": {"dias_cumplidos": fecha_dia}})
         return jsonify({"mensaje": "Seguimiento actualizado", "hecho": hecho, "fecha": fecha_dia}), 200
     except Exception as e:
         return error_interno(e)

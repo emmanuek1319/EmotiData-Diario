@@ -109,6 +109,16 @@ def dia_valido(d, atras=7, adelante=0):
     return x.isoformat()
 
 
+def dia_estricto(d, atras=7):
+    """Devuelve la fecha ISO si es hoy o hasta `atras` días antes; si no, None (no se corrige en silencio)."""
+    hoy = ahora_mx().date()
+    try:
+        x = datetime.strptime(str(d)[:10], "%Y-%m-%d").date()
+    except Exception:
+        return None
+    return x.isoformat() if hoy - timedelta(days=atras) <= x <= hoy else None
+
+
 # ---------- sesión (JWT) ----------
 def emitir_token(uid, proposito, horas, extra=None):
     ahora = datetime.now(timezone.utc)

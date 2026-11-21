@@ -1665,6 +1665,7 @@
     /* ---------- Atrévete al cambio (Sincronizado con MongoDB Atlas) ---------- */
     const TIPOS = { construir: "Construir", mejorar: "Mejorar", soltar: "Soltar y sustituir" };
     const PH = { construir: "Ej.: 25 minutos de estudio sin celular", mejorar: "Ej.: Caminar 10 minutos", soltar: "Ej.: En lugar de abrir redes, respirar 3 veces" };
+    let CATALOGO_OK = false;
     let CATALOGO_IDEAS = [
       { tipo: "construir", titulo: "Estudiar sin distracciones", micro_accion: "25 minutos de estudio sin celular", emocion_trigger: "Neutral", duracion_dias: 20 },
       { tipo: "construir", titulo: "Un buen momento al día", micro_accion: "Escribir una cosa buena del día", emocion_trigger: "Tristeza", duracion_dias: 14 },
@@ -1682,9 +1683,9 @@
       try {
         const [resMetas, resCat] = await Promise.all([
           api("/api/habitos/" + encodeURIComponent(session.id)),
-          api("/api/habitos/catalogo").catch(() => ({ catalogo: [] }))
+          (CATALOGO_OK ? Promise.resolve({ catalogo: [] }) : api("/api/habitos/catalogo").catch(() => ({ catalogo: [] })))
         ]);
-        if (resCat.catalogo && resCat.catalogo.length) CATALOGO_IDEAS = resCat.catalogo;
+        if (resCat.catalogo && resCat.catalogo.length) { CATALOGO_IDEAS = resCat.catalogo; CATALOGO_OK = true; } /* las ideas no se barajan en cada toque */
 
         const ms = resMetas.metas || [];
         const hechas = ms.filter(g => g.hecho_hoy).length;
@@ -1693,9 +1694,9 @@
         $("#cMetas").innerHTML = ms.length
           ? ms.map(g => {
             const diasNums = new Set((g.dias_cumplidos || []).map(f => +String(f).slice(8, 10)));
-            return `<div class="meta"><div class="mh"><span class="tag">${TIPOS[g.tipo] || ""}</span><button class="ghost q" data-act="quitar" data-id="${esc(g.id)}">Quitar</button></div>
+            return `<div class="meta"><div class="mh"><span class="tag">${TIPOS[g.tipo] || ""}${g.origen === "sugerida" ? " · sugerida" : ""}</span><button class="ghost q" data-act="quitar" data-id="${esc(g.id)}">Quitar</button></div>
               <h3 class="mt">${esc(g.titulo)}</h3><p class="mut">Cada día: ${esc(g.micro_accion)}</p>
-              <button class="btn${g.hecho_hoy ? " ok" : ""}" data-act="hoy" data-id="${esc(g.id)}">${g.hecho_hoy ? "Hecho hoy ✓" : "Hoy lo logré"}</button>
+              <button class="btn${g.hecho_hoy ? " ok" : ""}" data-act="hoy" data-hecho="${g.hecho_hoy ? 1 : 0}" data-id="${esc(g.id)}">${g.hecho_hoy ? "Hecho hoy ✓" : "Hoy lo logré"}</button>
               <div class="barra" role="progressbar" aria-valuenow="${g.porcentaje}" aria-valuemin="0" aria-valuemax="100"><i style="width:${g.porcentaje}%"></i></div>
               <small>${diasNums.size} de ${g.meta_dias} días · racha de ${g.racha} ${g.racha === 1 ? "día" : "días"}${diasNums.size >= g.meta_dias ? " · ¡Meta cumplida!" : ""}</small>
               <div class="pts">${Array.from({ length: dim }, (_, i) => `<i class="${diasNums.has(i + 1) ? "on" : ""}${i + 1 === n ? " hoy" : ""}" title="Día ${i + 1}"></i>`).join("")}</div>
@@ -1705,12 +1706,12 @@
 
         const em = lget("emoti_emo");
         $("#cSug").textContent = em ? `Según cómo te has sentido (${em.toLowerCase()}), te sugerimos las marcadas.` : "";
-        $("#cIdeas").innerHTML = CATALOGO_IDEAS.map((x, i) => `<button class="chip${em && x.emocion_trigger === em ? " sug" : ""}" type="button" data-act="idea" data-i="${i}">${esc(x.titulo)}</button>`).join("");
+        $("#cIdeas").innerHTML = CATALOGO_IDEAS.map((x, i) => `<button class="chip${em && x.emocion_trigger === em ? " sug" : ""}" type="button" data-act="idea" data-i="${i}"${ms.some(m => m.titulo === x.titulo) ? " disabled" : ""}>${esc(x.titulo)}</button>`).join("");
 
         const st = resMetas.stats_medallas || {};
         const L = [
           ["🌱", "Primer paso", "Creaste tu primera meta en tu cuenta.", (st.total_metas_historicas || 0) > 0],
-          ["🧭", "Rumbo claro", "Tienes de 3 a 5 metas este mes.", ms.length >= 3],
+          ["🧭", "Rumbo claro", "Elegiste de 3 a 5 metas este mes.", !!st.rumbo_claro],
           ["⚡", "Victoria diaria", "Cumpliste una micro-acción.", (st.total_victorias || 0) > 0],
           ["🔥", "Constancia", "Sumaste 7 victorias en una misma meta.", !!st.alguna_7],
           ["🏆", "Meta cumplida", "Alcanzaste los días que te propusiste.", !!st.alguna_cumplida],
@@ -1730,7 +1731,7 @@
       b.disabled = true;
       try {
         if (a === "hoy") {
-          await api("/api/habitos/checkin", { meta_id: b.dataset.id, usuario_id: session.id });
+          await api("/api/habitos/checkin", { meta_id: b.dataset.id, usuario_id: session.id, hecho: b.dataset.hecho !== "1" });
         } else if (a === "quitar") {
           if (!confirm("¿Quitar esta meta y su progreso?")) { b.disabled = false; return; }
           await api("/api/habitos/" + encodeURIComponent(b.dataset.id), null, "DELETE");
